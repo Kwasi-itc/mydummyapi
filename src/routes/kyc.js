@@ -127,7 +127,7 @@ router.post('/customers/:customerId/refresh', (req, res) => {
 /**
  * @swagger
  * /kyc/customers/{customerId}/check-approved:
- *   post:
+ *   get:
  *     summary: Checker endpoint - Verify if KYC is approved
  *     description: Returns true/false indicating if the KYC is approved. Used for workflow conditional logic.
  *     tags: [KYC]
@@ -146,7 +146,7 @@ router.post('/customers/:customerId/refresh', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.post('/customers/:customerId/check-approved', (req, res) => {
+router.get('/customers/:customerId/check-approved', (req, res) => {
   const kyc = getKycRecord(req.params.customerId);
 
   if (!kyc) {

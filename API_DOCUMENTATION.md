@@ -226,7 +226,7 @@ Update the status of an account.
 
 ### Check Account Active (Checker)
 
-**POST** `/accounts/:accountId/check-active`
+**GET** `/accounts/:accountId/check-active`
 
 **Checker endpoint** - Returns true/false indicating if account is active.
 
@@ -386,7 +386,7 @@ Create a new transaction/transfer between accounts.
 
 ### Check Transaction Cleared (Checker)
 
-**POST** `/transactions/:txnId/check-cleared`
+**GET** `/transactions/:txnId/check-cleared`
 
 **Checker endpoint** - Returns true/false indicating if transaction has been cleared.
 
@@ -530,7 +530,7 @@ Cancel a pending payment.
 
 ### Check Payment Ready (Checker)
 
-**POST** `/payments/:paymentId/check-ready`
+**GET** `/payments/:paymentId/check-ready`
 
 **Checker endpoint** - Returns true/false indicating if payment is ready to process (KYC complete, sufficient balance, pending status).
 
@@ -682,7 +682,7 @@ List loans with optional filters.
 
 ### Check Loan Eligible (Checker)
 
-**POST** `/loans/:loanId/check-eligible`
+**GET** `/loans/:loanId/check-eligible`
 
 **Checker endpoint** - Returns true/false indicating if loan is eligible (credit score >= 650).
 
@@ -710,7 +710,7 @@ List loans with optional filters.
 
 ### Check Loan Approved (Checker)
 
-**POST** `/loans/:loanId/check-approved`
+**GET** `/loans/:loanId/check-approved`
 
 **Checker endpoint** - Returns true/false indicating if loan has been approved.
 
@@ -959,7 +959,7 @@ List airtime purchases with optional filters.
 
 ### Check Airtime Purchase Completed (Checker)
 
-**POST** `/airtime/purchases/:purchaseId/check-completed`
+**GET** `/airtime/purchases/:purchaseId/check-completed`
 
 **Checker endpoint** - Returns true/false indicating if airtime purchase has been completed.
 
@@ -1062,7 +1062,7 @@ Refresh KYC check with updated documents.
 
 ### Check KYC Approved (Checker)
 
-**POST** `/kyc/customers/:customerId/check-approved`
+**GET** `/kyc/customers/:customerId/check-approved`
 
 **Checker endpoint** - Returns true/false indicating if KYC is approved.
 
@@ -1166,26 +1166,21 @@ Update account transaction limits.
 
 ### Check Limit Available (Checker)
 
-**POST** `/limits/:accountId/check-available`
+**GET** `/limits/:accountId/check-available`
 
 **Checker endpoint** - Returns true/false indicating if requested amount is within available limit.
 
 **Path Parameters:**
 - `accountId` (string, required) - Account ID
 
-**Request Body:**
-```json
-{
-  "amount": 500.00,
-  "period": "daily"
-}
+**Query Parameters:**
+- `amount` (number, required) - Amount to check (must be > 0)
+- `period` (string, optional) - `daily` or `monthly` (default: `daily`)
+
+**Example Request:**
 ```
-
-**Required Fields:**
-- `amount` (number) - Must be > 0
-
-**Optional Fields:**
-- `period` (string) - `daily` or `monthly` (default: `daily`)
+GET /limits/acc-001/check-available?amount=500.00&period=daily
+```
 
 **Response:**
 ```json
@@ -1219,20 +1214,19 @@ Update account transaction limits.
 **Steps:**
 1. Check account is active
    ```
-   POST /accounts/acc-001/check-active
+   GET /accounts/acc-001/check-active
    ```
    - If `result: false`, stop workflow
 
 2. Check KYC is approved
    ```
-   POST /kyc/customers/cust-001/check-approved
+   GET /kyc/customers/cust-001/check-approved
    ```
    - If `result: false`, request KYC refresh
 
 3. Check limit is available
    ```
-   POST /limits/acc-001/check-available
-   Body: { "amount": 200.00, "period": "daily" }
+   GET /limits/acc-001/check-available?amount=200.00&period=daily
    ```
    - If `result: false`, stop workflow
 
@@ -1244,7 +1238,7 @@ Update account transaction limits.
 
 5. Check payment is ready
    ```
-   POST /payments/pay-003/check-ready
+   GET /payments/pay-003/check-ready
    ```
    - If `result: true`, proceed with processing
 
@@ -1261,13 +1255,13 @@ Update account transaction limits.
 
 2. Check loan eligibility
    ```
-   POST /loans/loan-004/check-eligible
+   GET /loans/loan-004/check-eligible
    ```
    - If `result: false`, reject loan
 
 3. Check KYC is approved
    ```
-   POST /kyc/customers/cust-001/check-approved
+   GET /kyc/customers/cust-001/check-approved
    ```
    - If `result: false`, request KYC refresh
 
@@ -1278,7 +1272,7 @@ Update account transaction limits.
 
 5. Verify approval
    ```
-   POST /loans/loan-004/check-approved
+   GET /loans/loan-004/check-approved
    ```
    - Confirm `result: true` before disbursement
 
@@ -1300,7 +1294,7 @@ Update account transaction limits.
 
 3. Check completion (poll until complete)
    ```
-   POST /airtime/purchases/air-003/check-completed
+   GET /airtime/purchases/air-003/check-completed
    ```
    - If `result: false`, wait and retry
    - If `result: true`, confirm delivery to user
@@ -1329,7 +1323,7 @@ Update account transaction limits.
 
 4. Verify KYC approval
    ```
-   POST /kyc/customers/cust-004/check-approved
+   GET /kyc/customers/cust-004/check-approved
    ```
    - If `result: true`, account is fully activated
 
@@ -1338,20 +1332,20 @@ Update account transaction limits.
 ## Checker Endpoints Summary
 
 All checker endpoints follow this pattern:
-- **Method:** POST
+- **Method:** GET
 - **Response:** `{ result: true|false, reason: string, metadata: object }`
 - **Purpose:** Enable conditional workflow logic
 
 | Endpoint | Purpose | Use Case |
 |----------|---------|----------|
-| `POST /accounts/:accountId/check-active` | Verify account is active | Pre-transaction validation |
-| `POST /transactions/:txnId/check-cleared` | Verify transaction cleared | Post-transaction confirmation |
-| `POST /payments/:paymentId/check-ready` | Verify payment ready to process | Pre-payment validation |
-| `POST /loans/:loanId/check-eligible` | Verify loan eligibility | Pre-approval validation |
-| `POST /loans/:loanId/check-approved` | Verify loan approved | Pre-disbursement validation |
-| `POST /airtime/purchases/:purchaseId/check-completed` | Verify airtime delivered | Post-purchase confirmation |
-| `POST /kyc/customers/:customerId/check-approved` | Verify KYC approved | Pre-transaction validation |
-| `POST /limits/:accountId/check-available` | Verify limit available | Pre-transaction validation |
+| `GET /accounts/:accountId/check-active` | Verify account is active | Pre-transaction validation |
+| `GET /transactions/:txnId/check-cleared` | Verify transaction cleared | Post-transaction confirmation |
+| `GET /payments/:paymentId/check-ready` | Verify payment ready to process | Pre-payment validation |
+| `GET /loans/:loanId/check-eligible` | Verify loan eligibility | Pre-approval validation |
+| `GET /loans/:loanId/check-approved` | Verify loan approved | Pre-disbursement validation |
+| `GET /airtime/purchases/:purchaseId/check-completed` | Verify airtime delivered | Post-purchase confirmation |
+| `GET /kyc/customers/:customerId/check-approved` | Verify KYC approved | Pre-transaction validation |
+| `GET /limits/:accountId/check-available?amount=X&period=Y` | Verify limit available | Pre-transaction validation |
 
 ---
 

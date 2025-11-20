@@ -162,7 +162,7 @@ router.post('/:accountId/update', (req, res) => {
 /**
  * @swagger
  * /limits/{accountId}/check-available:
- *   post:
+ *   get:
  *     summary: Checker endpoint - Verify if limit is available for a transaction
  *     description: Returns true/false indicating if the requested amount is within the available limit. Used for workflow conditional logic.
  *     tags: [Limits]
@@ -173,23 +173,21 @@ router.post('/:accountId/update', (req, res) => {
  *         schema:
  *           type: string
  *         description: Account ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - amount
- *             properties:
- *               amount:
- *                 type: number
- *                 example: 500.00
- *               period:
- *                 type: string
- *                 enum: [daily, monthly]
- *                 default: daily
- *                 example: daily
+ *       - in: query
+ *         name: amount
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: Amount to check
+ *         example: 500.00
+ *       - in: query
+ *         name: period
+ *         schema:
+ *           type: string
+ *           enum: [daily, monthly]
+ *           default: daily
+ *         description: Period to check (daily or monthly)
+ *         example: daily
  *     responses:
  *       200:
  *         description: Checker response
@@ -198,8 +196,8 @@ router.post('/:accountId/update', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.post('/:accountId/check-available', (req, res) => {
-  const { amount, period = 'daily' } = req.body;
+router.get('/:accountId/check-available', (req, res) => {
+  const { amount, period = 'daily' } = req.query;
   const limit = getAccountLimit(req.params.accountId);
 
   if (!limit) {
@@ -212,7 +210,8 @@ router.post('/:accountId/check-available', (req, res) => {
     });
   }
 
-  if (!amount || amount <= 0) {
+  const amountNum = parseFloat(amount);
+  if (!amount || isNaN(amountNum) || amountNum <= 0) {
     return res.json({
       result: false,
       reason: 'Amount must be provided and greater than 0',
@@ -228,16 +227,16 @@ router.post('/:accountId/check-available', (req, res) => {
 
   if (period === 'daily') {
     remaining = limit.dailyLimit - limit.dailyUsed;
-    isAvailable = remaining >= amount;
+    isAvailable = remaining >= amountNum;
     reason = isAvailable 
       ? `Daily limit available: ${remaining} ${limit.currency}` 
-      : `Insufficient daily limit. Available: ${remaining} ${limit.currency}, Required: ${amount} ${limit.currency}`;
+      : `Insufficient daily limit. Available: ${remaining} ${limit.currency}, Required: ${amountNum} ${limit.currency}`;
   } else if (period === 'monthly') {
     remaining = limit.monthlyLimit - limit.monthlyUsed;
-    isAvailable = remaining >= amount;
+    isAvailable = remaining >= amountNum;
     reason = isAvailable 
       ? `Monthly limit available: ${remaining} ${limit.currency}` 
-      : `Insufficient monthly limit. Available: ${remaining} ${limit.currency}, Required: ${amount} ${limit.currency}`;
+      : `Insufficient monthly limit. Available: ${remaining} ${limit.currency}, Required: ${amountNum} ${limit.currency}`;
   } else {
     return res.json({
       result: false,
@@ -254,7 +253,7 @@ router.post('/:accountId/check-available', (req, res) => {
     metadata: {
       accountId: limit.accountId,
       period,
-      requestedAmount: amount,
+      requestedAmount: amountNum,
       remaining,
       limit: period === 'daily' ? limit.dailyLimit : limit.monthlyLimit,
       used: period === 'daily' ? limit.dailyUsed : limit.monthlyUsed,

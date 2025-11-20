@@ -290,7 +290,7 @@ router.get('/purchases', (req, res) => {
 /**
  * @swagger
  * /airtime/purchases/{purchaseId}/check-completed:
- *   post:
+ *   get:
  *     summary: Checker endpoint - Verify if airtime purchase is completed
  *     description: Returns true/false indicating if the airtime purchase has been completed. Used for workflow conditional logic.
  *     tags: [Airtime]
@@ -309,7 +309,7 @@ router.get('/purchases', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.post('/purchases/:purchaseId/check-completed', (req, res) => {
+router.get('/purchases/:purchaseId/check-completed', (req, res) => {
   const purchase = getAirtimePurchaseById(req.params.purchaseId);
 
   if (!purchase) {

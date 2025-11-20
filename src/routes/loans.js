@@ -231,7 +231,7 @@ router.get('/', (req, res) => {
 /**
  * @swagger
  * /loans/{loanId}/check-eligible:
- *   post:
+ *   get:
  *     summary: Checker endpoint - Verify loan eligibility
  *     description: Returns true/false indicating if the loan is eligible (credit score >= 650). Used for workflow conditional logic.
  *     tags: [Loans]
@@ -250,7 +250,7 @@ router.get('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.post('/:loanId/check-eligible', (req, res) => {
+router.get('/:loanId/check-eligible', (req, res) => {
   const loan = getLoanById(req.params.loanId);
 
   if (!loan) {
@@ -285,7 +285,7 @@ router.post('/:loanId/check-eligible', (req, res) => {
 /**
  * @swagger
  * /loans/{loanId}/check-approved:
- *   post:
+ *   get:
  *     summary: Checker endpoint - Verify loan approval status
  *     description: Returns true/false indicating if the loan has been approved. Used for workflow conditional logic.
  *     tags: [Loans]
@@ -304,7 +304,7 @@ router.post('/:loanId/check-eligible', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.post('/:loanId/check-approved', (req, res) => {
+router.get('/:loanId/check-approved', (req, res) => {
   const loan = getLoanById(req.params.loanId);
 
   if (!loan) {

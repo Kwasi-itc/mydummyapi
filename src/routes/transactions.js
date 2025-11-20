@@ -254,7 +254,7 @@ router.post('/', (req, res) => {
 /**
  * @swagger
  * /transactions/{txnId}/check-cleared:
- *   post:
+ *   get:
  *     summary: Checker endpoint - Verify if transaction has been cleared
  *     description: Returns true/false indicating if the transaction has been cleared. Used for workflow conditional logic.
  *     tags: [Transactions]
@@ -273,7 +273,7 @@ router.post('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.post('/:txnId/check-cleared', (req, res) => {
+router.get('/:txnId/check-cleared', (req, res) => {
   const transaction = getTransactionById(req.params.txnId);
 
   if (!transaction) {

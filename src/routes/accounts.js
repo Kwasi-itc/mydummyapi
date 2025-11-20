@@ -293,7 +293,7 @@ router.patch('/:accountId/status', (req, res) => {
 /**
  * @swagger
  * /accounts/{accountId}/check-active:
- *   post:
+ *   get:
  *     summary: Checker endpoint - Verify if account is active
  *     description: Returns true/false indicating if the account is active. Used for workflow conditional logic.
  *     tags: [Accounts]
@@ -312,7 +312,7 @@ router.patch('/:accountId/status', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.post('/:accountId/check-active', (req, res) => {
+router.get('/:accountId/check-active', (req, res) => {
   const account = getAccountById(req.params.accountId);
 
   if (!account) {

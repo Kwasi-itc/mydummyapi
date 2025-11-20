@@ -251,7 +251,7 @@ router.post('/:paymentId/cancel', (req, res) => {
 /**
  * @swagger
  * /payments/{paymentId}/check-ready:
- *   post:
+ *   get:
  *     summary: Checker endpoint - Verify if payment is ready to process
  *     description: Returns true/false indicating if the payment is ready to process (KYC complete, sufficient balance, pending status). Used for workflow conditional logic.
  *     tags: [Payments]
@@ -270,7 +270,7 @@ router.post('/:paymentId/cancel', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.post('/:paymentId/check-ready', (req, res) => {
+router.get('/:paymentId/check-ready', (req, res) => {
   const payment = getPaymentById(req.params.paymentId);
 
   if (!payment) {

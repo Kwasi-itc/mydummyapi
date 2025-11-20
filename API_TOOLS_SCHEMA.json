@@ -63,7 +63,7 @@
         "checker": false
       },
       "checkActive": {
-        "method": "POST",
+        "method": "GET",
         "path": "/accounts/{accountId}/check-active",
         "description": "Checker: Verify if account is active",
         "parameters": {
@@ -109,7 +109,7 @@
         "checker": false
       },
       "checkCleared": {
-        "method": "POST",
+        "method": "GET",
         "path": "/transactions/{txnId}/check-cleared",
         "description": "Checker: Verify if transaction has been cleared",
         "parameters": {
@@ -155,7 +155,7 @@
         "checker": false
       },
       "checkReady": {
-        "method": "POST",
+        "method": "GET",
         "path": "/payments/{paymentId}/check-ready",
         "description": "Checker: Verify if payment is ready to process",
         "parameters": {
@@ -201,7 +201,7 @@
         "checker": false
       },
       "checkEligible": {
-        "method": "POST",
+        "method": "GET",
         "path": "/loans/{loanId}/check-eligible",
         "description": "Checker: Verify loan eligibility",
         "parameters": {
@@ -212,7 +212,7 @@
         "workflowUse": "Pre-approval validation"
       },
       "checkApproved": {
-        "method": "POST",
+        "method": "GET",
         "path": "/loans/{loanId}/check-approved",
         "description": "Checker: Verify loan approval status",
         "parameters": {
@@ -289,7 +289,7 @@
         "checker": false
       },
       "checkCompleted": {
-        "method": "POST",
+        "method": "GET",
         "path": "/airtime/purchases/{purchaseId}/check-completed",
         "description": "Checker: Verify if airtime purchase is completed",
         "parameters": {
@@ -325,7 +325,7 @@
         "checker": false
       },
       "checkApproved": {
-        "method": "POST",
+        "method": "GET",
         "path": "/kyc/customers/{customerId}/check-approved",
         "description": "Checker: Verify if KYC is approved",
         "parameters": {
@@ -361,12 +361,12 @@
         "checker": false
       },
       "checkAvailable": {
-        "method": "POST",
+        "method": "GET",
         "path": "/limits/{accountId}/check-available",
         "description": "Checker: Verify if limit is available for a transaction",
         "parameters": {
           "path": ["accountId"],
-          "body": {
+          "query": {
             "required": ["amount"],
             "optional": ["period"]
           }
@@ -516,7 +516,7 @@
     },
     {
       "endpoint": "limits.checkAvailable",
-      "path": "/limits/{accountId}/check-available",
+      "path": "/limits/{accountId}/check-available?amount={amount}&period={period}",
       "purpose": "Verify limit available",
       "useCase": "Pre-transaction validation"
     }
