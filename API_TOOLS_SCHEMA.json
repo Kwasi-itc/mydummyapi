@@ -1,0 +1,547 @@
+{
+  "apiInfo": {
+    "baseUrl": "http://localhost:3000",
+    "version": "1.0.0",
+    "description": "Fintech Agent API - Dummy endpoints for intelligent agent chatbot workflows"
+  },
+  "endpoints": {
+    "system": {
+      "health": {
+        "method": "GET",
+        "path": "/health",
+        "description": "Health check endpoint",
+        "parameters": {},
+        "responseType": "object",
+        "checker": false
+      }
+    },
+    "accounts": {
+      "list": {
+        "method": "GET",
+        "path": "/accounts",
+        "description": "List all accounts with optional filters",
+        "parameters": {
+          "query": ["customerId", "status", "type", "currency"]
+        },
+        "responseType": "array",
+        "checker": false
+      },
+      "get": {
+        "method": "GET",
+        "path": "/accounts/{accountId}",
+        "description": "Get account details by ID",
+        "parameters": {
+          "path": ["accountId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "create": {
+        "method": "POST",
+        "path": "/accounts",
+        "description": "Create a new account",
+        "parameters": {
+          "body": {
+            "required": ["customerId", "type", "currency"],
+            "optional": ["initialDeposit", "kycLevel"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "updateStatus": {
+        "method": "PATCH",
+        "path": "/accounts/{accountId}/status",
+        "description": "Update account status",
+        "parameters": {
+          "path": ["accountId"],
+          "body": {
+            "required": ["status"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "checkActive": {
+        "method": "POST",
+        "path": "/accounts/{accountId}/check-active",
+        "description": "Checker: Verify if account is active",
+        "parameters": {
+          "path": ["accountId"]
+        },
+        "responseType": "checker",
+        "checker": true,
+        "workflowUse": "Pre-transaction validation"
+      }
+    },
+    "transactions": {
+      "list": {
+        "method": "GET",
+        "path": "/transactions",
+        "description": "List transactions with optional filters",
+        "parameters": {
+          "query": ["accountId", "status", "type", "dateFrom", "dateTo"]
+        },
+        "responseType": "array",
+        "checker": false
+      },
+      "get": {
+        "method": "GET",
+        "path": "/transactions/{txnId}",
+        "description": "Get transaction details by ID",
+        "parameters": {
+          "path": ["txnId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "create": {
+        "method": "POST",
+        "path": "/transactions",
+        "description": "Create a new transaction/transfer",
+        "parameters": {
+          "body": {
+            "required": ["fromAccount", "toAccount", "amount", "currency"],
+            "optional": ["purpose"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "checkCleared": {
+        "method": "POST",
+        "path": "/transactions/{txnId}/check-cleared",
+        "description": "Checker: Verify if transaction has been cleared",
+        "parameters": {
+          "path": ["txnId"]
+        },
+        "responseType": "checker",
+        "checker": true,
+        "workflowUse": "Post-transaction confirmation"
+      }
+    },
+    "payments": {
+      "initiate": {
+        "method": "POST",
+        "path": "/payments/initiate",
+        "description": "Initiate a payment/payout",
+        "parameters": {
+          "body": {
+            "required": ["accountId", "beneficiary", "beneficiaryAccount", "amount", "currency"],
+            "optional": ["method", "reference"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "get": {
+        "method": "GET",
+        "path": "/payments/{paymentId}",
+        "description": "Get payment details by ID",
+        "parameters": {
+          "path": ["paymentId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "cancel": {
+        "method": "POST",
+        "path": "/payments/{paymentId}/cancel",
+        "description": "Cancel a pending payment",
+        "parameters": {
+          "path": ["paymentId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "checkReady": {
+        "method": "POST",
+        "path": "/payments/{paymentId}/check-ready",
+        "description": "Checker: Verify if payment is ready to process",
+        "parameters": {
+          "path": ["paymentId"]
+        },
+        "responseType": "checker",
+        "checker": true,
+        "workflowUse": "Pre-payment validation"
+      }
+    },
+    "loans": {
+      "apply": {
+        "method": "POST",
+        "path": "/loans/apply",
+        "description": "Submit a loan application",
+        "parameters": {
+          "body": {
+            "required": ["customerId", "accountId", "amount", "purpose", "tenure"],
+            "optional": ["collateral"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "get": {
+        "method": "GET",
+        "path": "/loans/{loanId}",
+        "description": "Get loan application details by ID",
+        "parameters": {
+          "path": ["loanId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "list": {
+        "method": "GET",
+        "path": "/loans",
+        "description": "List loans with optional filters",
+        "parameters": {
+          "query": ["customerId", "status", "dateFrom"]
+        },
+        "responseType": "array",
+        "checker": false
+      },
+      "checkEligible": {
+        "method": "POST",
+        "path": "/loans/{loanId}/check-eligible",
+        "description": "Checker: Verify loan eligibility",
+        "parameters": {
+          "path": ["loanId"]
+        },
+        "responseType": "checker",
+        "checker": true,
+        "workflowUse": "Pre-approval validation"
+      },
+      "checkApproved": {
+        "method": "POST",
+        "path": "/loans/{loanId}/check-approved",
+        "description": "Checker: Verify loan approval status",
+        "parameters": {
+          "path": ["loanId"]
+        },
+        "responseType": "checker",
+        "checker": true,
+        "workflowUse": "Pre-disbursement validation"
+      },
+      "approve": {
+        "method": "POST",
+        "path": "/loans/{loanId}/approve",
+        "description": "Approve a loan (admin action)",
+        "parameters": {
+          "path": ["loanId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "reject": {
+        "method": "POST",
+        "path": "/loans/{loanId}/reject",
+        "description": "Reject a loan application",
+        "parameters": {
+          "path": ["loanId"],
+          "body": {
+            "optional": ["reason"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      }
+    },
+    "airtime": {
+      "listProviders": {
+        "method": "GET",
+        "path": "/airtime/providers",
+        "description": "List available airtime providers/networks",
+        "parameters": {},
+        "responseType": "array",
+        "checker": false
+      },
+      "purchase": {
+        "method": "POST",
+        "path": "/airtime/purchase",
+        "description": "Purchase airtime",
+        "parameters": {
+          "body": {
+            "required": ["phoneNumber", "amount", "provider", "accountId"],
+            "optional": ["currency"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "getPurchase": {
+        "method": "GET",
+        "path": "/airtime/purchases/{purchaseId}",
+        "description": "Get airtime purchase details by ID",
+        "parameters": {
+          "path": ["purchaseId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "listPurchases": {
+        "method": "GET",
+        "path": "/airtime/purchases",
+        "description": "List airtime purchases with optional filters",
+        "parameters": {
+          "query": ["accountId", "phoneNumber", "status", "dateFrom"]
+        },
+        "responseType": "array",
+        "checker": false
+      },
+      "checkCompleted": {
+        "method": "POST",
+        "path": "/airtime/purchases/{purchaseId}/check-completed",
+        "description": "Checker: Verify if airtime purchase is completed",
+        "parameters": {
+          "path": ["purchaseId"]
+        },
+        "responseType": "checker",
+        "checker": true,
+        "workflowUse": "Post-purchase confirmation"
+      }
+    },
+    "kyc": {
+      "get": {
+        "method": "GET",
+        "path": "/kyc/customers/{customerId}",
+        "description": "Get KYC status for a customer",
+        "parameters": {
+          "path": ["customerId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "refresh": {
+        "method": "POST",
+        "path": "/kyc/customers/{customerId}/refresh",
+        "description": "Refresh KYC check",
+        "parameters": {
+          "path": ["customerId"],
+          "body": {
+            "optional": ["documents", "level"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "checkApproved": {
+        "method": "POST",
+        "path": "/kyc/customers/{customerId}/check-approved",
+        "description": "Checker: Verify if KYC is approved",
+        "parameters": {
+          "path": ["customerId"]
+        },
+        "responseType": "checker",
+        "checker": true,
+        "workflowUse": "Pre-transaction validation"
+      }
+    },
+    "limits": {
+      "get": {
+        "method": "GET",
+        "path": "/limits/{accountId}",
+        "description": "Get account transaction limits",
+        "parameters": {
+          "path": ["accountId"]
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "update": {
+        "method": "POST",
+        "path": "/limits/{accountId}/update",
+        "description": "Update account transaction limits",
+        "parameters": {
+          "path": ["accountId"],
+          "body": {
+            "optional": ["dailyLimit", "monthlyLimit"]
+          }
+        },
+        "responseType": "object",
+        "checker": false
+      },
+      "checkAvailable": {
+        "method": "POST",
+        "path": "/limits/{accountId}/check-available",
+        "description": "Checker: Verify if limit is available for a transaction",
+        "parameters": {
+          "path": ["accountId"],
+          "body": {
+            "required": ["amount"],
+            "optional": ["period"]
+          }
+        },
+        "responseType": "checker",
+        "checker": true,
+        "workflowUse": "Pre-transaction validation"
+      }
+    }
+  },
+  "workflows": {
+    "paymentProcessing": {
+      "name": "Payment Processing Workflow",
+      "description": "Process a payment with all prerequisite checks",
+      "steps": [
+        {
+          "step": 1,
+          "endpoint": "accounts.checkActive",
+          "description": "Check account is active",
+          "condition": "result must be true"
+        },
+        {
+          "step": 2,
+          "endpoint": "kyc.checkApproved",
+          "description": "Check KYC is approved",
+          "condition": "result must be true"
+        },
+        {
+          "step": 3,
+          "endpoint": "limits.checkAvailable",
+          "description": "Check limit is available",
+          "condition": "result must be true"
+        },
+        {
+          "step": 4,
+          "endpoint": "payments.initiate",
+          "description": "Initiate payment"
+        },
+        {
+          "step": 5,
+          "endpoint": "payments.checkReady",
+          "description": "Check payment is ready",
+          "condition": "result must be true"
+        }
+      ]
+    },
+    "loanApplication": {
+      "name": "Loan Application Workflow",
+      "description": "Process loan application with eligibility and approval checks",
+      "steps": [
+        {
+          "step": 1,
+          "endpoint": "loans.apply",
+          "description": "Submit loan application"
+        },
+        {
+          "step": 2,
+          "endpoint": "loans.checkEligible",
+          "description": "Check loan eligibility",
+          "condition": "result must be true"
+        },
+        {
+          "step": 3,
+          "endpoint": "kyc.checkApproved",
+          "description": "Check KYC is approved",
+          "condition": "result must be true"
+        },
+        {
+          "step": 4,
+          "endpoint": "loans.approve",
+          "description": "Approve loan"
+        },
+        {
+          "step": 5,
+          "endpoint": "loans.checkApproved",
+          "description": "Verify approval",
+          "condition": "result must be true"
+        }
+      ]
+    },
+    "airtimePurchase": {
+      "name": "Airtime Purchase Workflow",
+      "description": "Purchase airtime and verify delivery",
+      "steps": [
+        {
+          "step": 1,
+          "endpoint": "airtime.listProviders",
+          "description": "Get available providers"
+        },
+        {
+          "step": 2,
+          "endpoint": "airtime.purchase",
+          "description": "Purchase airtime"
+        },
+        {
+          "step": 3,
+          "endpoint": "airtime.checkCompleted",
+          "description": "Check completion (poll until complete)",
+          "condition": "result must be true",
+          "retry": true
+        }
+      ]
+    }
+  },
+  "checkerEndpoints": [
+    {
+      "endpoint": "accounts.checkActive",
+      "path": "/accounts/{accountId}/check-active",
+      "purpose": "Verify account is active",
+      "useCase": "Pre-transaction validation"
+    },
+    {
+      "endpoint": "transactions.checkCleared",
+      "path": "/transactions/{txnId}/check-cleared",
+      "purpose": "Verify transaction cleared",
+      "useCase": "Post-transaction confirmation"
+    },
+    {
+      "endpoint": "payments.checkReady",
+      "path": "/payments/{paymentId}/check-ready",
+      "purpose": "Verify payment ready to process",
+      "useCase": "Pre-payment validation"
+    },
+    {
+      "endpoint": "loans.checkEligible",
+      "path": "/loans/{loanId}/check-eligible",
+      "purpose": "Verify loan eligibility",
+      "useCase": "Pre-approval validation"
+    },
+    {
+      "endpoint": "loans.checkApproved",
+      "path": "/loans/{loanId}/check-approved",
+      "purpose": "Verify loan approved",
+      "useCase": "Pre-disbursement validation"
+    },
+    {
+      "endpoint": "airtime.checkCompleted",
+      "path": "/airtime/purchases/{purchaseId}/check-completed",
+      "purpose": "Verify airtime delivered",
+      "useCase": "Post-purchase confirmation"
+    },
+    {
+      "endpoint": "kyc.checkApproved",
+      "path": "/kyc/customers/{customerId}/check-approved",
+      "purpose": "Verify KYC approved",
+      "useCase": "Pre-transaction validation"
+    },
+    {
+      "endpoint": "limits.checkAvailable",
+      "path": "/limits/{accountId}/check-available",
+      "purpose": "Verify limit available",
+      "useCase": "Pre-transaction validation"
+    }
+  ],
+  "responseFormats": {
+    "success": {
+      "status": "success",
+      "data": "object|array",
+      "count": "number (for lists)",
+      "timestamp": "ISO 8601 string",
+      "requestId": "string"
+    },
+    "error": {
+      "status": "error",
+      "message": "string",
+      "timestamp": "ISO 8601 string",
+      "requestId": "string"
+    },
+    "checker": {
+      "result": "boolean",
+      "reason": "string",
+      "metadata": "object",
+      "timestamp": "ISO 8601 string",
+      "requestId": "string"
+    }
+  }
+}
+

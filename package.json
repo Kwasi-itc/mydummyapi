@@ -1,0 +1,30 @@
+{
+  "name": "fintech-agent-api",
+  "version": "1.0.0",
+  "description": "Dummy fintech API endpoints for intelligent agent chatbot workflows",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": [
+    "fintech",
+    "api",
+    "express",
+    "agent",
+    "workflow"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "swagger-ui-express": "^5.0.0",
+    "swagger-jsdoc": "^6.2.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
+
