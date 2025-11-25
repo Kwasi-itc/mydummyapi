@@ -4,6 +4,7 @@ import {
   getTransactionById,
   addTransaction
 } from '../data/mockData.js';
+import { getForcedBoolean } from '../utils/forceResult.js';
 
 const router = express.Router();
 
@@ -93,18 +94,14 @@ router.get('/', (req, res) => {
  *   post:
  *     summary: Get transaction details by ID
  *     tags: [Transactions]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - txnId
- *             properties:
- *               txnId:
- *                 type: string
- *                 example: txn-001
+ *     parameters:
+ *       - in: query
+ *         name: result
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: Simulation value to return (true/false as string).
  *     responses:
  *       200:
  *         description: Transaction details
@@ -276,11 +273,12 @@ router.post('/', (req, res) => {
  *     tags: [Transactions]
  *     parameters:
  *       - in: query
- *         name: txnId
- *         required: true
+ *         name: result
+ *         required: false
  *         schema:
  *           type: string
- *           example: txn-001
+ *           enum: ["true", "false"]
+ *         description: Optional. Set to true/false (as string) to force the checker response. Defaults to false if not provided.
  *     responses:
  *       200:
  *         description: Checker response
@@ -290,43 +288,16 @@ router.post('/', (req, res) => {
  *               $ref: '#/components/schemas/CheckerResponse'
  */
 router.get('/check-cleared', (req, res) => {
-  const { txnId } = req.query;
-  
-  if (!txnId) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required parameter: txnId',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-  
-  const transaction = getTransactionById(txnId);
+  const { result } = req.query;
 
-  if (!transaction) {
-    return res.json({
-      result: false,
-      reason: 'Transaction not found',
-      metadata: { transactionId: txnId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const forced = getForcedBoolean(result);
+  const finalResult = forced !== null ? forced : false;
 
-  const isCleared = transaction.status === 'cleared';
-  
   res.json({
-    result: isCleared,
-    reason: isCleared 
-      ? 'Transaction has been cleared' 
-      : `Transaction status is: ${transaction.status}`,
-    metadata: {
-      transactionId: transaction.id,
-      status: transaction.status,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      processedAt: transaction.processedAt
-    },
+    result: finalResult,
+    reason: finalResult
+      ? 'Transaction has been cleared'
+      : 'Transaction has NOT been cleared',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

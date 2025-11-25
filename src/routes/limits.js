@@ -3,6 +3,7 @@ import {
   getAccountLimit,
   updateAccountLimit
 } from '../data/mockData.js';
+import { getForcedBoolean } from '../utils/forceResult.js';
 
 const router = express.Router();
 
@@ -191,25 +192,12 @@ router.post('/update', (req, res) => {
  *     tags: [Limits]
  *     parameters:
  *       - in: query
- *         name: accountId
- *         required: true
- *         schema:
- *           type: string
- *           example: acc-001
- *       - in: query
- *         name: amount
- *         required: true
- *         schema:
- *           type: number
- *           example: 500.00
- *       - in: query
- *         name: period
+ *         name: result
  *         required: false
  *         schema:
  *           type: string
- *           enum: [daily, monthly]
- *           default: daily
- *           example: daily
+ *           enum: ["true", "false"]
+ *         description: Optional. Set to true/false (as string) to force the checker response. Defaults to false if not provided.
  *     responses:
  *       200:
  *         description: Checker response
@@ -219,78 +207,16 @@ router.post('/update', (req, res) => {
  *               $ref: '#/components/schemas/CheckerResponse'
  */
 router.get('/check-available', (req, res) => {
-  const { accountId, amount, period = 'daily' } = req.query;
-  
-  if (!accountId) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required parameter: accountId',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-  
-  const limit = getAccountLimit(accountId);
+  const { result } = req.query;
 
-  if (!limit) {
-    return res.json({
-      result: false,
-      reason: 'Account limits not found',
-      metadata: { accountId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-
-  const amountNum = parseFloat(amount);
-  if (amount === undefined || amount === null || isNaN(amountNum) || amountNum <= 0) {
-    return res.json({
-      result: false,
-      reason: 'Amount must be provided and greater than 0',
-      metadata: { accountId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-
-  let isAvailable = false;
-  let remaining = 0;
-  let reason = '';
-
-  if (period === 'daily') {
-    remaining = limit.dailyLimit - limit.dailyUsed;
-    isAvailable = remaining >= amountNum;
-    reason = isAvailable 
-      ? `Daily limit available: ${remaining} ${limit.currency}` 
-      : `Insufficient daily limit. Available: ${remaining} ${limit.currency}, Required: ${amountNum} ${limit.currency}`;
-  } else if (period === 'monthly') {
-    remaining = limit.monthlyLimit - limit.monthlyUsed;
-    isAvailable = remaining >= amountNum;
-    reason = isAvailable 
-      ? `Monthly limit available: ${remaining} ${limit.currency}` 
-      : `Insufficient monthly limit. Available: ${remaining} ${limit.currency}, Required: ${amountNum} ${limit.currency}`;
-  } else {
-    return res.json({
-      result: false,
-      reason: 'Period must be "daily" or "monthly"',
-      metadata: { accountId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const forced = getForcedBoolean(result);
+  const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: isAvailable,
-    reason,
-    metadata: {
-      accountId: limit.accountId,
-      period,
-      requestedAmount: amountNum,
-      remaining,
-      limit: period === 'daily' ? limit.dailyLimit : limit.monthlyLimit,
-      used: period === 'daily' ? limit.dailyUsed : limit.monthlyUsed,
-      currency: limit.currency
-    },
+    result: finalResult,
+    reason: finalResult
+      ? 'Limit is available'
+      : 'Insufficient limit',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

@@ -6,6 +6,7 @@ import {
   updatePayment,
   getAccountById
 } from '../data/mockData.js';
+import { getForcedBoolean } from '../utils/forceResult.js';
 
 const router = express.Router();
 
@@ -23,6 +24,7 @@ const router = express.Router();
  *             type: object
  *             required:
  *               - accountId
+ *               - customerId
  *               - beneficiary
  *               - beneficiaryAccount
  *               - amount
@@ -30,25 +32,35 @@ const router = express.Router();
  *             properties:
  *               accountId:
  *                 type: string
+ *                 description: The unique identifier of the source account
  *                 example: acc-001
+ *               customerId:
+ *                 type: string
+ *                 description: The unique identifier of the customer
+ *                 example: cust-001
  *               beneficiary:
  *                 type: string
+ *                 description: Name of the payment beneficiary
  *                 example: John Doe
  *               beneficiaryAccount:
  *                 type: string
+ *                 description: Account number or identifier of the beneficiary
  *                 example: 9876543210
  *               amount:
  *                 type: number
+ *                 minimum: 0.01
+ *                 description: Payment amount (must be greater than 0.01)
  *                 example: 200.00
  *               currency:
  *                 type: string
+ *                 enum: [GHS, USD, EUR, NGN]
+ *                 description: Currency code for the payment
  *                 example: GHS
  *               method:
  *                 type: string
+ *                 enum: [bank_transfer, mobile_money, card]
+ *                 description: Payment method - defaults to bank_transfer
  *                 example: bank_transfer
- *               reference:
- *                 type: string
- *                 example: PAY-REF-001
  *     responses:
  *       201:
  *         description: Payment initiated
@@ -62,7 +74,7 @@ const router = express.Router();
  *                     data:
  *                       $ref: '#/components/schemas/Payment'
  *       400:
- *         description: Missing required fields or invalid amount
+ *         description: Missing required fields or invalid amount/currency
  *         content:
  *           application/json:
  *             schema:
@@ -75,24 +87,63 @@ const router = express.Router();
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/initiate', (req, res) => {
-  const { accountId, beneficiary, beneficiaryAccount, amount, currency, method, reference } = req.body;
+  const { accountId, customerId, beneficiary, beneficiaryAccount, amount, currency, method } = req.body;
 
-  if (!accountId || !beneficiary || !beneficiaryAccount || !amount || !currency) {
+  // Validate required fields
+  const requiredFields = {
+    accountId,
+    customerId,
+    beneficiary,
+    beneficiaryAccount,
+    amount,
+    currency
+  };
+
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([key]) => key);
+
+  if (missingFields.length > 0) {
     return res.status(400).json({
       status: 'error',
-      message: 'Missing required fields: accountId, beneficiary, beneficiaryAccount, amount, currency',
+      message: `Missing required fields: ${missingFields.join(', ')}`,
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
   }
 
-  if (amount <= 0) {
+  // Validate amount
+  if (typeof amount !== 'number' || amount < 0.01) {
     return res.status(400).json({
       status: 'error',
-      message: 'Amount must be greater than 0',
+      message: 'Amount must be a number greater than or equal to 0.01',
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
+  }
+
+  // Validate currency enum
+  const validCurrencies = ['GHS', 'USD', 'EUR', 'NGN'];
+  if (!validCurrencies.includes(currency)) {
+    return res.status(400).json({
+      status: 'error',
+      message: `Invalid currency. Must be one of: ${validCurrencies.join(', ')}`,
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Validate method if provided
+  if (method) {
+    const validMethods = ['bank_transfer', 'mobile_money', 'card'];
+    if (!validMethods.includes(method)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Invalid method. Must be one of: ${validMethods.join(', ')}`,
+        timestamp: new Date().toISOString(),
+        requestId: req.requestId
+      });
+    }
   }
 
   const account = getAccountById(accountId);
@@ -107,12 +158,12 @@ router.post('/initiate', (req, res) => {
 
   const payment = addPayment({
     accountId,
+    customerId,
     beneficiary,
     beneficiaryAccount,
     amount,
     currency,
     method: method || 'bank_transfer',
-    reference,
     kycComplete: true, // Simulated
     sufficientBalance: account.balance >= amount
   });
@@ -132,18 +183,14 @@ router.post('/initiate', (req, res) => {
  *   post:
  *     summary: Get payment details by ID
  *     tags: [Payments]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - paymentId
- *             properties:
- *               paymentId:
- *                 type: string
- *                 example: pay-001
+ *     parameters:
+ *       - in: query
+ *         name: result
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: Simulation value to return (true/false as string).
  *     responses:
  *       200:
  *         description: Payment details
@@ -289,11 +336,12 @@ router.post('/cancel', (req, res) => {
  *     tags: [Payments]
  *     parameters:
  *       - in: query
- *         name: paymentId
- *         required: true
+ *         name: result
+ *         required: false
  *         schema:
  *           type: string
- *           example: pay-001
+ *           enum: ["true", "false"]
+ *         description: Optional. Set to true/false (as string) to force the checker response. Defaults to false if not provided.
  *     responses:
  *       200:
  *         description: Checker response
@@ -303,47 +351,16 @@ router.post('/cancel', (req, res) => {
  *               $ref: '#/components/schemas/CheckerResponse'
  */
 router.get('/check-ready', (req, res) => {
-  const { paymentId } = req.query;
-  
-  if (!paymentId) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required parameter: paymentId',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-  
-  const payment = getPaymentById(paymentId);
+  const { result } = req.query;
 
-  if (!payment) {
-    return res.json({
-      result: false,
-      reason: 'Payment not found',
-      metadata: { paymentId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-
-  const isReady = payment.kycComplete && payment.sufficientBalance && payment.status === 'pending';
-  const reasons = [];
-  
-  if (!payment.kycComplete) reasons.push('KYC not complete');
-  if (!payment.sufficientBalance) reasons.push('Insufficient balance');
-  if (payment.status !== 'pending') reasons.push(`Payment status is ${payment.status}`);
+  const forced = getForcedBoolean(result);
+  const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: isReady,
-    reason: isReady ? 'Payment is ready to process' : reasons.join(', '),
-    metadata: {
-      paymentId: payment.id,
-      status: payment.status,
-      kycComplete: payment.kycComplete,
-      sufficientBalance: payment.sufficientBalance,
-      amount: payment.amount,
-      currency: payment.currency
-    },
+    result: finalResult,
+    reason: finalResult
+      ? 'Payment is ready to process'
+      : 'Payment is NOT ready to process',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

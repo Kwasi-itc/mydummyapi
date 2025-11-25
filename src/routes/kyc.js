@@ -3,6 +3,7 @@ import {
   getKycRecord,
   updateKycRecord
 } from '../data/mockData.js';
+import { getForcedBoolean } from '../utils/forceResult.js';
 
 const router = express.Router();
 
@@ -12,18 +13,20 @@ const router = express.Router();
  *   post:
  *     summary: Get KYC status for a customer
  *     tags: [KYC]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - customerId
- *             properties:
- *               customerId:
- *                 type: string
- *                 example: cust-001
+ *     parameters:
+ *       - in: query
+ *         name: result
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: Simulation value to return (true/false as string).
+ *       - in: query
+ *         name: forceResult
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: Testing helper. Set to true/false (as string) to force the checker response.
  *     responses:
  *       200:
  *         description: KYC record
@@ -88,18 +91,42 @@ router.post('/customers/get', (req, res) => {
  *             type: object
  *             required:
  *               - customerId
+ *               - address
+ *               - id_type
+ *               - full_name
+ *               - id_number
+ *               - phone_number
+ *               - date_of_birth
  *             properties:
  *               customerId:
  *                 type: string
  *                 example: cust-001
- *               documents:
- *                 type: array
- *                 items:
- *                   type: string
- *                 example: [id, proof_of_address, income_statement]
- *               level:
+ *               address:
  *                 type: string
- *                 example: tier2
+ *                 description: Your current residential address
+ *                 example: "123 Main Street, Accra, Ghana"
+ *               id_type:
+ *                 type: string
+ *                 enum: [passport, national_id, drivers_license]
+ *                 description: What type of identification document will you be using
+ *                 example: national_id
+ *               full_name:
+ *                 type: string
+ *                 description: Your full legal name as it appears on your ID
+ *                 example: "John Doe"
+ *               id_number:
+ *                 type: string
+ *                 description: Your identification document number
+ *                 example: "GHA-123456789"
+ *               phone_number:
+ *                 type: string
+ *                 description: Your contact phone number
+ *                 example: "+233241234567"
+ *               date_of_birth:
+ *                 type: string
+ *                 format: date
+ *                 description: Your date of birth (YYYY-MM-DD format)
+ *                 example: "1990-01-15"
  *     responses:
  *       200:
  *         description: KYC check refreshed
@@ -112,32 +139,90 @@ router.post('/customers/get', (req, res) => {
  *                   properties:
  *                     data:
  *                       $ref: '#/components/schemas/KYC'
+ *       400:
+ *         description: Missing required fields
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/customers/refresh', (req, res) => {
-  const { customerId, documents, level } = req.body;
+  const { 
+    customerId, 
+    address, 
+    id_type, 
+    full_name, 
+    id_number, 
+    phone_number, 
+    date_of_birth 
+  } = req.body;
   
-  if (!customerId) {
+  // Validate required fields
+  const requiredFields = {
+    customerId,
+    address,
+    id_type,
+    full_name,
+    id_number,
+    phone_number,
+    date_of_birth
+  };
+
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => !value)
+    .map(([key]) => key);
+
+  if (missingFields.length > 0) {
     return res.status(400).json({
       status: 'error',
-      message: 'Missing required field: customerId',
+      message: `Missing required fields: ${missingFields.join(', ')}`,
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
   }
-  
+
+  // Validate id_type enum
+  const validIdTypes = ['passport', 'national_id', 'drivers_license'];
+  if (!validIdTypes.includes(id_type)) {
+    return res.status(400).json({
+      status: 'error',
+      message: `Invalid id_type. Must be one of: ${validIdTypes.join(', ')}`,
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Validate date_of_birth format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date_of_birth)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Invalid date_of_birth format. Must be YYYY-MM-DD',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
   const existingKyc = getKycRecord(customerId);
 
-  // Simulate KYC refresh logic
-  const hasAllDocuments = documents && documents.length >= 2;
-  const riskRating = hasAllDocuments ? 'low' : 'medium';
-  const newStatus = hasAllDocuments ? 'approved' : 'pending';
+  // Simulate KYC validation logic - approve if all required fields are provided
+  const hasAllRequiredFields = address && id_type && full_name && id_number && phone_number && date_of_birth;
+  const riskRating = hasAllRequiredFields ? 'low' : 'medium';
+  const newStatus = hasAllRequiredFields ? 'approved' : 'pending';
 
   const kyc = updateKycRecord(customerId, {
     status: newStatus,
-    level: level || existingKyc?.level || 'tier1',
-    documents: documents || existingKyc?.documents || [],
+    level: existingKyc?.level || 'tier1',
+    documents: existingKyc?.documents || [id_type],
     riskRating,
-    pendingItems: hasAllDocuments ? [] : ['proof_of_address', 'income_statement']
+    pendingItems: hasAllRequiredFields ? [] : ['proof_of_address', 'income_statement'],
+    // Store the new KYC information
+    address,
+    idType: id_type,
+    fullName: full_name,
+    idNumber: id_number,
+    phoneNumber: phone_number,
+    dateOfBirth: date_of_birth
   });
 
   res.json({
@@ -158,11 +243,12 @@ router.post('/customers/refresh', (req, res) => {
  *     tags: [KYC]
  *     parameters:
  *       - in: query
- *         name: customerId
- *         required: true
+ *         name: result
+ *         required: false
  *         schema:
  *           type: string
- *           example: cust-001
+ *           enum: ["true", "false"]
+ *         description: Optional. Set to true/false (as string) to force the checker response. Defaults to false if not provided.
  *     responses:
  *       200:
  *         description: Checker response
@@ -172,45 +258,16 @@ router.post('/customers/refresh', (req, res) => {
  *               $ref: '#/components/schemas/CheckerResponse'
  */
 router.get('/customers/check-approved', (req, res) => {
-  const { customerId } = req.query;
-  
-  if (!customerId) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required parameter: customerId',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-  
-  const kyc = getKycRecord(customerId);
+  const { result } = req.query;
 
-  if (!kyc) {
-    return res.json({
-      result: false,
-      reason: 'KYC record not found',
-      metadata: { customerId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const forced = getForcedBoolean(result);
+  const finalResult = forced !== null ? forced : false;
 
-  const isApproved = kyc.status === 'approved';
-  
   res.json({
-    result: isApproved,
-    reason: isApproved 
-      ? 'KYC is approved' 
-      : `KYC status is: ${kyc.status}`,
-    metadata: {
-      customerId: kyc.customerId,
-      status: kyc.status,
-      level: kyc.level,
-      riskRating: kyc.riskRating,
-      pendingItems: kyc.pendingItems,
-      verifiedAt: kyc.verifiedAt,
-      expiresAt: kyc.expiresAt
-    },
+    result: finalResult,
+    reason: finalResult
+      ? 'KYC is approved'
+      : 'KYC is not approved',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

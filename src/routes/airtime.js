@@ -5,6 +5,7 @@ import {
   addAirtimePurchase,
   updateAirtimePurchase
 } from '../data/mockData.js';
+import { getForcedBoolean } from '../utils/forceResult.js';
 
 const router = express.Router();
 
@@ -171,18 +172,14 @@ router.post('/purchase', (req, res) => {
  *   post:
  *     summary: Get airtime purchase details by ID
  *     tags: [Airtime]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - purchaseId
- *             properties:
- *               purchaseId:
- *                 type: string
- *                 example: air-001
+ *     parameters:
+ *       - in: query
+ *         name: result
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: Simulation value to return (true/false as string).
  *     responses:
  *       200:
  *         description: Airtime purchase details
@@ -312,11 +309,12 @@ router.get('/purchases', (req, res) => {
  *     tags: [Airtime]
  *     parameters:
  *       - in: query
- *         name: purchaseId
- *         required: true
+ *         name: result
+ *         required: false
  *         schema:
  *           type: string
- *           example: air-001
+ *           enum: ["true", "false"]
+ *         description: Optional. Set to true/false (as string) to force the checker response. Defaults to false if not provided.
  *     responses:
  *       200:
  *         description: Checker response
@@ -326,45 +324,16 @@ router.get('/purchases', (req, res) => {
  *               $ref: '#/components/schemas/CheckerResponse'
  */
 router.get('/purchases/check-completed', (req, res) => {
-  const { purchaseId } = req.query;
-  
-  if (!purchaseId) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required parameter: purchaseId',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-  
-  const purchase = getAirtimePurchaseById(purchaseId);
+  const { result } = req.query;
 
-  if (!purchase) {
-    return res.json({
-      result: false,
-      reason: 'Airtime purchase not found',
-      metadata: { purchaseId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const forced = getForcedBoolean(result);
+  const finalResult = forced !== null ? forced : false;
 
-  const isCompleted = purchase.status === 'completed';
-  
   res.json({
-    result: isCompleted,
-    reason: isCompleted 
-      ? 'Airtime purchase has been completed' 
-      : `Purchase status is: ${purchase.status}`,
-    metadata: {
-      purchaseId: purchase.id,
-      status: purchase.status,
-      deliveryStatus: purchase.deliveryStatus,
-      phoneNumber: purchase.phoneNumber,
-      amount: purchase.amount,
-      provider: purchase.provider,
-      completedAt: purchase.completedAt
-    },
+    result: finalResult,
+    reason: finalResult
+      ? 'Airtime purchase has been completed'
+      : 'Airtime purchase is still processing',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

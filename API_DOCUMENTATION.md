@@ -245,7 +245,7 @@ Update the status of an account.
 **Checker endpoint** - Returns true/false indicating if account is active.
 
 **Query Parameters:**
-- `accountId` (string, required) - Account ID
+- `result` (string, required) - Set `true` or `false` to simulate the checker response
 
 **Example Request:**
 ```
@@ -417,7 +417,7 @@ Create a new transaction/transfer between accounts.
 **Checker endpoint** - Returns true/false indicating if transaction has been cleared.
 
 **Query Parameters:**
-- `txnId` (string, required) - Transaction ID
+- `result` (string, required) - Set `true` or `false` to simulate the checker response
 
 **Example Request:**
 ```
@@ -580,7 +580,7 @@ Cancel a pending payment.
 **Checker endpoint** - Returns true/false indicating if payment is ready to process (KYC complete, sufficient balance, pending status).
 
 **Query Parameters:**
-- `paymentId` (string, required) - Payment ID
+- `result` (string, required) - Set `true` or `false` to simulate the checker response
 
 **Example Request:**
 ```
@@ -756,7 +756,10 @@ List loans with optional filters.
 **Checker endpoint** - Returns true/false indicating if loan is eligible (credit score >= 650).
 
 **Query Parameters:**
-- `loanId` (string, required) - Loan ID
+- `result` (string, required) - Set `true` or `false` to simulate the checker response
+**Query Parameters:**
+- `result` (string, required) - Set `true` or `false` to simulate the checker response
+- `forceResult` (string, optional) - `true` or `false` to force the checker response for testing
 
 **Example Request:**
 ```
@@ -1111,7 +1114,7 @@ List airtime purchases with optional filters.
 **Checker endpoint** - Returns true/false indicating if airtime purchase has been completed.
 
 **Query Parameters:**
-- `purchaseId` (string, required) - Airtime purchase ID
+- `result` (string, required) - Set `true` or `false` to simulate the checker response
 
 **Example Request:**
 ```
@@ -1313,7 +1316,7 @@ Refresh KYC check with updated documents.
 **Checker endpoint** - Returns true/false indicating if KYC is approved.
 
 **Query Parameters:**
-- `customerId` (string, required) - Customer ID
+- `result` (string, required) - Set `true` or `false` to simulate the checker response
 
 **Example Request:**
 ```
@@ -1430,9 +1433,7 @@ Update account transaction limits.
 **Checker endpoint** - Returns true/false indicating if requested amount is within available limit.
 
 **Query Parameters:**
-- `accountId` (string, required) - Account ID
-- `amount` (number, required) - Amount to check (must be > 0)
-- `period` (string, optional) - `daily` or `monthly` (default: `daily`)
+- `result` (string, required) - Set `true` or `false` to simulate the checker response
 
 **Example Request:**
 ```
@@ -1601,9 +1602,9 @@ GET /limits/check-available?accountId=acc-001&amount=500&period=daily
 
 All checker endpoints follow this pattern:
 - **Method:** GET
-- **Query Parameters:** Carry the ID or filter fields (e.g., `?accountId=acc-001`)
+- **Query Parameters:** Single `result=true|false` flag that determines the response (simulated checker outcome)
 - **Response:** `{ result: true|false, reason: string, metadata: object }`
-- **Purpose:** Enable conditional workflow logic
+- **Purpose:** Enable conditional workflow logic during testing/demo scenarios
 
 | Endpoint | Purpose | Use Case |
 |----------|---------|----------|

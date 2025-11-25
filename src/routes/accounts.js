@@ -5,6 +5,7 @@ import {
   addAccount,
   updateAccount
 } from '../data/mockData.js';
+import { getForcedBoolean } from '../utils/forceResult.js';
 
 const router = express.Router();
 
@@ -165,20 +166,22 @@ router.post('/get', (req, res) => {
  *             properties:
  *               customerId:
  *                 type: string
+ *                 description: The unique identifier of the customer
  *                 example: cust-001
  *               type:
  *                 type: string
  *                 enum: [savings, current]
+ *                 description: Type of account to create (savings or current)
  *                 example: savings
  *               currency:
  *                 type: string
+ *                 description: Currency code for the account (e.g., GHS, USD, EUR, NGN)
  *                 example: GHS
  *               initialDeposit:
  *                 type: number
+ *                 minimum: 0
+ *                 description: Initial deposit amount (defaults to 0 if not provided)
  *                 example: 1000.00
- *               kycLevel:
- *                 type: string
- *                 example: tier2
  *     responses:
  *       201:
  *         description: Account created successfully
@@ -199,22 +202,56 @@ router.post('/get', (req, res) => {
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/', (req, res) => {
-  const { customerId, type, currency, initialDeposit, kycLevel } = req.body;
+  const { customerId, type, currency, initialDeposit } = req.body;
 
-  if (!customerId || !type || !currency) {
+  // Validate required fields
+  const requiredFields = {
+    customerId,
+    type,
+    currency
+  };
+
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([key]) => key);
+
+  if (missingFields.length > 0) {
     return res.status(400).json({
       status: 'error',
-      message: 'Missing required fields: customerId, type, currency',
+      message: `Missing required fields: ${missingFields.join(', ')}`,
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
+  }
+
+  // Validate type enum
+  const validTypes = ['savings', 'current'];
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({
+      status: 'error',
+      message: `Invalid type. Must be one of: ${validTypes.join(', ')}`,
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Validate initialDeposit if provided
+  if (initialDeposit !== undefined && initialDeposit !== null) {
+    if (typeof initialDeposit !== 'number' || isNaN(initialDeposit) || initialDeposit < 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'initialDeposit must be a number >= 0',
+        timestamp: new Date().toISOString(),
+        requestId: req.requestId
+      });
+    }
   }
 
   const account = addAccount({
     customerId,
     type,
     currency,
-    balance: initialDeposit || 0,
+    balance: initialDeposit !== undefined && initialDeposit !== null ? initialDeposit : 0,
     status: 'active',
     accountNumber: String(Math.floor(Math.random() * 9000000000) + 1000000000)
   });
@@ -321,11 +358,12 @@ router.post('/update-status', (req, res) => {
  *     tags: [Accounts]
  *     parameters:
  *       - in: query
- *         name: accountId
- *         required: true
+ *         name: result
+ *         required: false
  *         schema:
  *           type: string
- *           example: acc-001
+ *           enum: ["true", "false"]
+ *         description: Optional. Set to true/false (as string) to force the checker response. Defaults to false if not provided.
  *     responses:
  *       200:
  *         description: Checker response
@@ -335,39 +373,14 @@ router.post('/update-status', (req, res) => {
  *               $ref: '#/components/schemas/CheckerResponse'
  */
 router.get('/check-active', (req, res) => {
-  const { accountId } = req.query;
-  
-  if (!accountId) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required field: accountId',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-  
-  const account = getAccountById(accountId);
+  const { result } = req.query;
 
-  if (!account) {
-    return res.json({
-      result: false,
-      reason: 'Account not found',
-      metadata: { accountId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const forced = getForcedBoolean(result);
+  const finalResult = forced !== null ? forced : false;
 
-  const isActive = account.status === 'active';
-  
   res.json({
-    result: isActive,
-    reason: isActive ? 'Account is active' : `Account status is: ${account.status}`,
-    metadata: {
-      accountId: account.id,
-      status: account.status,
-      accountNumber: account.accountNumber
-    },
+    result: finalResult,
+    reason: finalResult ? 'Account is active' : 'Account is inactive',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

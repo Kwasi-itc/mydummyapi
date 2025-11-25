@@ -5,6 +5,7 @@ import {
   addLoan,
   updateLoan
 } from '../data/mockData.js';
+import { getForcedBoolean } from '../utils/forceResult.js';
 
 const router = express.Router();
 const addMonthsUtc = (date, months) => {
@@ -42,40 +43,42 @@ const formatAmount = (value, decimals = 2) => Number.parseFloat(value.toFixed(de
  *             properties:
  *               customerId:
  *                 type: string
+ *                 description: The unique identifier of the customer applying for the loan
  *                 example: cust-001
  *               accountId:
  *                 type: string
+ *                 description: The unique identifier of the account associated with the loan
  *                 example: acc-001
  *               loan_type:
  *                 type: string
  *                 enum: [personal, business]
- *                 description: What type of loan are you looking for - personal or business
+ *                 description: Type of loan (personal or business)
  *                 example: business
  *               loan_amount:
  *                 type: number
  *                 minimum: 1000
  *                 maximum: 1000000
- *                 description: How much would you like to borrow (in GH₵)
+ *                 description: Loan amount in GH₵ (must be between 1,000 and 1,000,000)
  *                 example: 50000.00
  *               loan_purpose:
  *                 type: string
- *                 description: What is the purpose of this loan
+ *                 description: Purpose or reason for the loan
  *                 example: Business expansion
  *               annual_income:
  *                 type: number
  *                 minimum: 0
- *                 description: What is your annual income (in GH₵)
+ *                 description: Annual income in GH₵ (must be >= 0)
  *                 example: 120000.00
  *               employment_status:
  *                 type: string
  *                 enum: [employed, self-employed, unemployed, retired]
- *                 description: What is your current employment status
+ *                 description: Employment status of the applicant
  *                 example: employed
  *               preferred_term_months:
- *                 type: number
+ *                 type: integer
  *                 minimum: 6
  *                 maximum: 360
- *                 description: What loan term would you prefer (in months)
+ *                 description: Preferred loan term in months (must be between 6 and 360)
  *                 example: 12
  *     responses:
  *       201:
@@ -109,61 +112,25 @@ router.post('/apply', (req, res) => {
   } = req.body;
 
   // Validate required fields
-  if (!customerId || !accountId || !loan_type || !loan_amount || !loan_purpose || 
-      annual_income === undefined || !employment_status || !preferred_term_months) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required fields: customerId, accountId, loan_type, loan_amount, loan_purpose, annual_income, employment_status, preferred_term_months',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const requiredFields = {
+    customerId,
+    accountId,
+    loan_type,
+    loan_amount,
+    loan_purpose,
+    annual_income,
+    employment_status,
+    preferred_term_months
+  };
 
-  // Validate loan_type enum
-  if (!['personal', 'business'].includes(loan_type)) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'loan_type must be either "personal" or "business"',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([key]) => key);
 
-  // Validate loan_amount range
-  if (loan_amount < 1000 || loan_amount > 1000000) {
+  if (missingFields.length > 0) {
     return res.status(400).json({
       status: 'error',
-      message: 'loan_amount must be between 1000 and 1000000 GH₵',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-
-  // Validate annual_income
-  if (annual_income < 0) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'annual_income must be >= 0',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-
-  // Validate employment_status enum
-  if (!['employed', 'self-employed', 'unemployed', 'retired'].includes(employment_status)) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'employment_status must be one of: employed, self-employed, unemployed, retired',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-
-  // Validate preferred_term_months range
-  if (preferred_term_months < 6 || preferred_term_months > 360) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'preferred_term_months must be between 6 and 360 months',
+      message: `Missing required fields: ${missingFields.join(', ')}`,
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
@@ -229,18 +196,14 @@ router.post('/apply', (req, res) => {
  *   post:
  *     summary: Get loan application details by ID
  *     tags: [Loans]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - loanId
- *             properties:
- *               loanId:
- *                 type: string
- *                 example: loan-001
+ *     parameters:
+ *       - in: query
+ *         name: result
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: Simulation value to return (true/false as string).
  *     responses:
  *       200:
  *         description: Loan details
@@ -362,11 +325,12 @@ router.get('/', (req, res) => {
  *     tags: [Loans]
  *     parameters:
  *       - in: query
- *         name: loanId
- *         required: true
+ *         name: result
+ *         required: false
  *         schema:
  *           type: string
- *           example: loan-001
+ *           enum: ["true", "false"]
+ *         description: Optional. Set to true/false (as string) to force the checker response. Defaults to false if not provided.
  *     responses:
  *       200:
  *         description: Checker response
@@ -376,43 +340,16 @@ router.get('/', (req, res) => {
  *               $ref: '#/components/schemas/CheckerResponse'
  */
 router.get('/check-eligible', (req, res) => {
-  const { loanId } = req.query;
-  
-  if (!loanId) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required parameter: loanId',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-  
-  const loan = getLoanById(loanId);
+  const { result } = req.query;
 
-  if (!loan) {
-    return res.json({
-      result: false,
-      reason: 'Loan not found',
-      metadata: { loanId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const forced = getForcedBoolean(result);
+  const finalResult = forced !== null ? forced : false;
 
-  const isEligible = loan.eligible && loan.creditScore >= 650;
-  
   res.json({
-    result: isEligible,
-    reason: isEligible 
+    result: finalResult,
+    reason: finalResult 
       ? 'Loan is eligible' 
-      : `Credit score ${loan.creditScore} is below minimum threshold (650)`,
-    metadata: {
-      loanId: loan.id,
-      creditScore: loan.creditScore,
-      eligible: loan.eligible,
-      amount: loan.amount,
-      status: loan.status
-    },
+      : 'Loan is not eligible',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });
@@ -427,11 +364,12 @@ router.get('/check-eligible', (req, res) => {
  *     tags: [Loans]
  *     parameters:
  *       - in: query
- *         name: loanId
- *         required: true
+ *         name: result
+ *         required: false
  *         schema:
  *           type: string
- *           example: loan-001
+ *           enum: ["true", "false"]
+ *         description: Optional. Set to true/false (as string) to force the checker response. Defaults to false if not provided.
  *     responses:
  *       200:
  *         description: Checker response
@@ -441,43 +379,16 @@ router.get('/check-eligible', (req, res) => {
  *               $ref: '#/components/schemas/CheckerResponse'
  */
 router.get('/check-approved', (req, res) => {
-  const { loanId } = req.query;
-  
-  if (!loanId) {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Missing required parameter: loanId',
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
-  
-  const loan = getLoanById(loanId);
+  const { result } = req.query;
 
-  if (!loan) {
-    return res.json({
-      result: false,
-      reason: 'Loan not found',
-      metadata: { loanId },
-      timestamp: new Date().toISOString(),
-      requestId: req.requestId
-    });
-  }
+  const forced = getForcedBoolean(result);
+  const finalResult = forced !== null ? forced : false;
 
-  const isApproved = loan.status === 'approved';
-  const pendingChecks = isApproved ? [] : ['credit_check', 'document_verification', 'risk_assessment'];
-  
   res.json({
-    result: isApproved,
-    reason: isApproved 
+    result: finalResult,
+    reason: finalResult 
       ? 'Loan has been approved' 
-      : `Loan status is: ${loan.status}`,
-    metadata: {
-      loanId: loan.id,
-      status: loan.status,
-      pendingChecks,
-      approvedAt: loan.approvedAt
-    },
+      : 'Loan has not been approved',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });
@@ -489,18 +400,14 @@ router.get('/check-approved', (req, res) => {
  *   post:
  *     summary: Approve a loan (admin action)
  *     tags: [Loans]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - loanId
- *             properties:
- *               loanId:
- *                 type: string
- *                 example: loan-001
+ *     parameters:
+ *       - in: query
+ *         name: result
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: Simulation value to return (true/false as string).
  *     responses:
  *       200:
  *         description: Loan approved and disbursed

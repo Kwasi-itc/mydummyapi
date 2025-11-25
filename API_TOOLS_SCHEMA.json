@@ -91,9 +91,9 @@
       "checkActive": {
         "method": "GET",
         "path": "/accounts/check-active",
-        "description": "Checker: Verify if account is active",
+        "description": "Checker: Verify if account is active (supports optional forceResult=true|false testing override)",
         "parameters": {
-          "query": ["accountId"]
+          "query": ["result"]
         },
         "responseType": "checker",
         "checker": true,
@@ -139,9 +139,9 @@
       "checkCleared": {
         "method": "GET",
         "path": "/transactions/check-cleared",
-        "description": "Checker: Verify if transaction has been cleared",
+        "description": "Checker: Verify if transaction has been cleared (optional forceResult override)",
         "parameters": {
-          "query": ["txnId"]
+          "query": ["result"]
         },
         "responseType": "checker",
         "checker": true,
@@ -189,9 +189,9 @@
       "checkReady": {
         "method": "GET",
         "path": "/payments/check-ready",
-        "description": "Checker: Verify if payment is ready to process",
+        "description": "Checker: Verify if payment is ready to process (optional forceResult override)",
         "parameters": {
-          "query": ["paymentId"]
+          "query": ["result"]
         },
         "responseType": "checker",
         "checker": true,
@@ -284,9 +284,9 @@
       "checkEligible": {
         "method": "GET",
         "path": "/loans/check-eligible",
-        "description": "Checker: Verify loan eligibility",
+        "description": "Checker: Verify loan eligibility (optional forceResult override)",
         "parameters": {
-          "query": ["loanId"]
+          "query": ["result"]
         },
         "responseType": "checker",
         "checker": true,
@@ -295,9 +295,9 @@
       "checkApproved": {
         "method": "GET",
         "path": "/loans/check-approved",
-        "description": "Checker: Verify loan approval status",
+        "description": "Checker: Verify loan approval status (optional forceResult override)",
         "parameters": {
-          "query": ["loanId"]
+          "query": ["result"]
         },
         "responseType": "checker",
         "checker": true,
@@ -387,9 +387,9 @@
       "checkCompleted": {
         "method": "GET",
         "path": "/airtime/purchases/check-completed",
-        "description": "Checker: Verify if airtime purchase is completed",
+        "description": "Checker: Verify if airtime purchase is completed (optional forceResult override)",
         "parameters": {
-          "query": ["purchaseId"]
+          "query": ["result"]
         },
         "responseType": "checker",
         "checker": true,
@@ -425,9 +425,9 @@
       "checkApproved": {
         "method": "GET",
         "path": "/kyc/customers/check-approved",
-        "description": "Checker: Verify if KYC is approved",
+        "description": "Checker: Verify if KYC is approved (optional forceResult override)",
         "parameters": {
-          "query": ["customerId"]
+          "query": ["result"]
         },
         "responseType": "checker",
         "checker": true,
@@ -463,9 +463,9 @@
       "checkAvailable": {
         "method": "GET",
         "path": "/limits/check-available",
-        "description": "Checker: Verify if limit is available for a transaction",
+        "description": "Checker: Verify if limit is available for a transaction (optional forceResult override)",
         "parameters": {
-          "query": ["accountId", "amount", "period"]
+          "query": ["result"]
         },
         "responseType": "checker",
         "checker": true,
