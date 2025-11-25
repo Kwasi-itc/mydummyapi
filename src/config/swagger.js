@@ -13,6 +13,10 @@ const options = {
     },
     servers: [
       {
+        url: 'https://mydummyapi.onrender.com',
+        description: 'Production server'
+      },
+      {
         url: 'http://localhost:3000',
         description: 'Development server'
       }
