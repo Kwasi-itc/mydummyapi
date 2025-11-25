@@ -9,6 +9,8 @@ import loansRoutes from './routes/loans.js';
 import airtimeRoutes from './routes/airtime.js';
 import kycRoutes from './routes/kyc.js';
 import limitsRoutes from './routes/limits.js';
+import fxRoutes from './routes/fx.js';
+import treasuryRoutes from './routes/treasury.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,6 +72,8 @@ app.use('/loans', loansRoutes);
 app.use('/airtime', airtimeRoutes);
 app.use('/kyc', kycRoutes);
 app.use('/limits', limitsRoutes);
+app.use('/fx', fxRoutes);
+app.use('/treasury', treasuryRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

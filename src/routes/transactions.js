@@ -89,17 +89,22 @@ router.get('/', (req, res) => {
 
 /**
  * @swagger
- * /transactions/{txnId}:
- *   get:
+ * /transactions/get:
+ *   post:
  *     summary: Get transaction details by ID
  *     tags: [Transactions]
- *     parameters:
- *       - in: path
- *         name: txnId
- *         required: true
- *         schema:
- *           type: string
- *         description: Transaction ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - txnId
+ *             properties:
+ *               txnId:
+ *                 type: string
+ *                 example: txn-001
  *     responses:
  *       200:
  *         description: Transaction details
@@ -119,8 +124,19 @@ router.get('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:txnId', (req, res) => {
-  const transaction = getTransactionById(req.params.txnId);
+router.post('/get', (req, res) => {
+  const { txnId } = req.body;
+  
+  if (!txnId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: txnId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const transaction = getTransactionById(txnId);
   
   if (!transaction) {
     return res.status(404).json({
@@ -253,18 +269,18 @@ router.post('/', (req, res) => {
 
 /**
  * @swagger
- * /transactions/{txnId}/check-cleared:
+ * /transactions/check-cleared:
  *   get:
  *     summary: Checker endpoint - Verify if transaction has been cleared
  *     description: Returns true/false indicating if the transaction has been cleared. Used for workflow conditional logic.
  *     tags: [Transactions]
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: txnId
  *         required: true
  *         schema:
  *           type: string
- *         description: Transaction ID
+ *           example: txn-001
  *     responses:
  *       200:
  *         description: Checker response
@@ -273,14 +289,25 @@ router.post('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.get('/:txnId/check-cleared', (req, res) => {
-  const transaction = getTransactionById(req.params.txnId);
+router.get('/check-cleared', (req, res) => {
+  const { txnId } = req.query;
+  
+  if (!txnId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: txnId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const transaction = getTransactionById(txnId);
 
   if (!transaction) {
     return res.json({
       result: false,
       reason: 'Transaction not found',
-      metadata: { transactionId: req.params.txnId },
+      metadata: { transactionId: txnId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });

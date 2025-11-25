@@ -80,17 +80,22 @@ router.get('/', (req, res) => {
 
 /**
  * @swagger
- * /accounts/{accountId}:
- *   get:
+ * /accounts/get:
+ *   post:
  *     summary: Get account details by ID
  *     tags: [Accounts]
- *     parameters:
- *       - in: path
- *         name: accountId
- *         required: true
- *         schema:
- *           type: string
- *         description: Account ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accountId
+ *             properties:
+ *               accountId:
+ *                 type: string
+ *                 example: acc-001
  *     responses:
  *       200:
  *         description: Account details
@@ -110,8 +115,19 @@ router.get('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:accountId', (req, res) => {
-  const account = getAccountById(req.params.accountId);
+router.post('/get', (req, res) => {
+  const { accountId } = req.body;
+  
+  if (!accountId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: accountId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const account = getAccountById(accountId);
   
   if (!account) {
     return res.status(404).json({
@@ -214,17 +230,10 @@ router.post('/', (req, res) => {
 
 /**
  * @swagger
- * /accounts/{accountId}/status:
- *   patch:
+ * /accounts/update-status:
+ *   post:
  *     summary: Update account status
  *     tags: [Accounts]
- *     parameters:
- *       - in: path
- *         name: accountId
- *         required: true
- *         schema:
- *           type: string
- *         description: Account ID
  *     requestBody:
  *       required: true
  *       content:
@@ -232,8 +241,12 @@ router.post('/', (req, res) => {
  *           schema:
  *             type: object
  *             required:
+ *               - accountId
  *               - status
  *             properties:
+ *               accountId:
+ *                 type: string
+ *                 example: acc-001
  *               status:
  *                 type: string
  *                 enum: [active, suspended, closed]
@@ -257,8 +270,17 @@ router.post('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.patch('/:accountId/status', (req, res) => {
-  const { status } = req.body;
+router.post('/update-status', (req, res) => {
+  const { accountId, status } = req.body;
+  
+  if (!accountId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: accountId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
   const validStatuses = ['active', 'suspended', 'closed'];
 
   if (!status || !validStatuses.includes(status)) {
@@ -270,7 +292,7 @@ router.patch('/:accountId/status', (req, res) => {
     });
   }
 
-  const account = updateAccount(req.params.accountId, { status });
+  const account = updateAccount(accountId, { status });
 
   if (!account) {
     return res.status(404).json({
@@ -292,18 +314,18 @@ router.patch('/:accountId/status', (req, res) => {
 
 /**
  * @swagger
- * /accounts/{accountId}/check-active:
+ * /accounts/check-active:
  *   get:
  *     summary: Checker endpoint - Verify if account is active
  *     description: Returns true/false indicating if the account is active. Used for workflow conditional logic.
  *     tags: [Accounts]
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: accountId
  *         required: true
  *         schema:
  *           type: string
- *         description: Account ID
+ *           example: acc-001
  *     responses:
  *       200:
  *         description: Checker response
@@ -312,14 +334,25 @@ router.patch('/:accountId/status', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.get('/:accountId/check-active', (req, res) => {
-  const account = getAccountById(req.params.accountId);
+router.get('/check-active', (req, res) => {
+  const { accountId } = req.query;
+  
+  if (!accountId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: accountId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const account = getAccountById(accountId);
 
   if (!account) {
     return res.json({
       result: false,
       reason: 'Account not found',
-      metadata: { accountId: req.params.accountId },
+      metadata: { accountId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });

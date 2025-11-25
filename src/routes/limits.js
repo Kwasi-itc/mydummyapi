@@ -8,17 +8,22 @@ const router = express.Router();
 
 /**
  * @swagger
- * /limits/{accountId}:
- *   get:
+ * /limits/get:
+ *   post:
  *     summary: Get account limits
  *     tags: [Limits]
- *     parameters:
- *       - in: path
- *         name: accountId
- *         required: true
- *         schema:
- *           type: string
- *         description: Account ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accountId
+ *             properties:
+ *               accountId:
+ *                 type: string
+ *                 example: acc-001
  *     responses:
  *       200:
  *         description: Account limits
@@ -38,8 +43,19 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:accountId', (req, res) => {
-  const limit = getAccountLimit(req.params.accountId);
+router.post('/get', (req, res) => {
+  const { accountId } = req.body;
+  
+  if (!accountId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: accountId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const limit = getAccountLimit(accountId);
   
   if (!limit) {
     return res.status(404).json({
@@ -69,24 +85,22 @@ router.get('/:accountId', (req, res) => {
 
 /**
  * @swagger
- * /limits/{accountId}/update:
+ * /limits/update:
  *   post:
  *     summary: Update account limits
  *     tags: [Limits]
- *     parameters:
- *       - in: path
- *         name: accountId
- *         required: true
- *         schema:
- *           type: string
- *         description: Account ID
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - accountId
  *             properties:
+ *               accountId:
+ *                 type: string
+ *                 example: acc-001
  *               dailyLimit:
  *                 type: number
  *                 example: 2000.00
@@ -112,8 +126,17 @@ router.get('/:accountId', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/:accountId/update', (req, res) => {
-  const { dailyLimit, monthlyLimit } = req.body;
+router.post('/update', (req, res) => {
+  const { accountId, dailyLimit, monthlyLimit } = req.body;
+  
+  if (!accountId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: accountId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
 
   if (!dailyLimit && !monthlyLimit) {
     return res.status(400).json({
@@ -148,7 +171,7 @@ router.post('/:accountId/update', (req, res) => {
     updates.monthlyLimit = monthlyLimit;
   }
 
-  const limit = updateAccountLimit(req.params.accountId, updates);
+  const limit = updateAccountLimit(accountId, updates);
 
   res.json({
     status: 'success',
@@ -161,33 +184,32 @@ router.post('/:accountId/update', (req, res) => {
 
 /**
  * @swagger
- * /limits/{accountId}/check-available:
+ * /limits/check-available:
  *   get:
  *     summary: Checker endpoint - Verify if limit is available for a transaction
  *     description: Returns true/false indicating if the requested amount is within the available limit. Used for workflow conditional logic.
  *     tags: [Limits]
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: accountId
  *         required: true
  *         schema:
  *           type: string
- *         description: Account ID
+ *           example: acc-001
  *       - in: query
  *         name: amount
  *         required: true
  *         schema:
  *           type: number
- *         description: Amount to check
- *         example: 500.00
+ *           example: 500.00
  *       - in: query
  *         name: period
+ *         required: false
  *         schema:
  *           type: string
  *           enum: [daily, monthly]
  *           default: daily
- *         description: Period to check (daily or monthly)
- *         example: daily
+ *           example: daily
  *     responses:
  *       200:
  *         description: Checker response
@@ -196,26 +218,36 @@ router.post('/:accountId/update', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.get('/:accountId/check-available', (req, res) => {
-  const { amount, period = 'daily' } = req.query;
-  const limit = getAccountLimit(req.params.accountId);
+router.get('/check-available', (req, res) => {
+  const { accountId, amount, period = 'daily' } = req.query;
+  
+  if (!accountId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: accountId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const limit = getAccountLimit(accountId);
 
   if (!limit) {
     return res.json({
       result: false,
       reason: 'Account limits not found',
-      metadata: { accountId: req.params.accountId },
+      metadata: { accountId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
   }
 
   const amountNum = parseFloat(amount);
-  if (!amount || isNaN(amountNum) || amountNum <= 0) {
+  if (amount === undefined || amount === null || isNaN(amountNum) || amountNum <= 0) {
     return res.json({
       result: false,
       reason: 'Amount must be provided and greater than 0',
-      metadata: { accountId: req.params.accountId },
+      metadata: { accountId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
@@ -241,7 +273,7 @@ router.get('/:accountId/check-available', (req, res) => {
     return res.json({
       result: false,
       reason: 'Period must be "daily" or "monthly"',
-      metadata: { accountId: req.params.accountId },
+      metadata: { accountId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });

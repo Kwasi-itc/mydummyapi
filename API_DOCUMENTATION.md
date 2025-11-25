@@ -109,16 +109,28 @@ GET /accounts?customerId=cust-001&status=active
 
 ### Get Account Details
 
-**GET** `/accounts/:accountId`
+**POST** `/accounts/get`
 
 Get detailed information about a specific account.
 
-**Path Parameters:**
-- `accountId` (string, required) - Account ID
+**Request Body:**
+```json
+{
+  "accountId": "acc-001"
+}
+```
+
+**Required Fields:**
+- `accountId` (string) - Account ID
 
 **Example Request:**
 ```
-GET /accounts/acc-001
+POST /accounts/get
+Content-Type: application/json
+
+{
+  "accountId": "acc-001"
+}
 ```
 
 **Response:**
@@ -190,19 +202,21 @@ Create a new account.
 
 ### Update Account Status
 
-**PATCH** `/accounts/:accountId/status`
+**POST** `/accounts/update-status`
 
 Update the status of an account.
-
-**Path Parameters:**
-- `accountId` (string, required) - Account ID
 
 **Request Body:**
 ```json
 {
+  "accountId": "acc-001",
   "status": "suspended"
 }
 ```
+
+**Required Fields:**
+- `accountId` (string) - Account ID
+- `status` (string) - New status
 
 **Valid Status Values:**
 - `active`
@@ -226,12 +240,17 @@ Update the status of an account.
 
 ### Check Account Active (Checker)
 
-**GET** `/accounts/:accountId/check-active`
+**GET** `/accounts/check-active`
 
 **Checker endpoint** - Returns true/false indicating if account is active.
 
-**Path Parameters:**
+**Query Parameters:**
 - `accountId` (string, required) - Account ID
+
+**Example Request:**
+```
+GET /accounts/check-active?accountId=acc-001
+```
 
 **Response:**
 ```json
@@ -299,12 +318,19 @@ GET /transactions?accountId=acc-001&status=cleared
 
 ### Get Transaction Details
 
-**GET** `/transactions/:txnId`
+**POST** `/transactions/get`
 
 Get details of a specific transaction.
 
-**Path Parameters:**
-- `txnId` (string, required) - Transaction ID
+**Request Body:**
+```json
+{
+  "txnId": "txn-001"
+}
+```
+
+**Required Fields:**
+- `txnId` (string) - Transaction ID
 
 **Response:**
 ```json
@@ -386,12 +412,17 @@ Create a new transaction/transfer between accounts.
 
 ### Check Transaction Cleared (Checker)
 
-**GET** `/transactions/:txnId/check-cleared`
+**GET** `/transactions/check-cleared`
 
 **Checker endpoint** - Returns true/false indicating if transaction has been cleared.
 
-**Path Parameters:**
+**Query Parameters:**
 - `txnId` (string, required) - Transaction ID
+
+**Example Request:**
+```
+GET /transactions/check-cleared?txnId=txn-001
+```
 
 **Response:**
 ```json
@@ -472,12 +503,19 @@ Initiate a payment/payout to a beneficiary.
 
 ### Get Payment Details
 
-**GET** `/payments/:paymentId`
+**POST** `/payments/get`
 
 Get details of a specific payment.
 
-**Path Parameters:**
-- `paymentId` (string, required) - Payment ID
+**Request Body:**
+```json
+{
+  "paymentId": "pay-001"
+}
+```
+
+**Required Fields:**
+- `paymentId` (string) - Payment ID
 
 **Response:**
 ```json
@@ -505,12 +543,19 @@ Get details of a specific payment.
 
 ### Cancel Payment
 
-**POST** `/payments/:paymentId/cancel`
+**POST** `/payments/cancel`
 
 Cancel a pending payment.
 
-**Path Parameters:**
-- `paymentId` (string, required) - Payment ID
+**Request Body:**
+```json
+{
+  "paymentId": "pay-001"
+}
+```
+
+**Required Fields:**
+- `paymentId` (string) - Payment ID
 
 **Response:**
 ```json
@@ -530,12 +575,17 @@ Cancel a pending payment.
 
 ### Check Payment Ready (Checker)
 
-**GET** `/payments/:paymentId/check-ready`
+**GET** `/payments/check-ready`
 
 **Checker endpoint** - Returns true/false indicating if payment is ready to process (KYC complete, sufficient balance, pending status).
 
-**Path Parameters:**
+**Query Parameters:**
 - `paymentId` (string, required) - Payment ID
+
+**Example Request:**
+```
+GET /payments/check-ready?paymentId=pay-001
+```
 
 **Response:**
 ```json
@@ -572,22 +622,31 @@ Submit a loan application.
 {
   "customerId": "cust-001",
   "accountId": "acc-001",
-  "amount": 5000.00,
-  "purpose": "Business expansion",
-  "tenure": 12,
-  "collateral": "Property documents"
+  "loan_type": "business",
+  "loan_amount": 50000.00,
+  "loan_purpose": "Business expansion",
+  "annual_income": 120000.00,
+  "employment_status": "employed",
+  "preferred_term_months": 12
 }
 ```
 
 **Required Fields:**
-- `customerId` (string)
-- `accountId` (string)
-- `amount` (number) - Must be > 0
-- `purpose` (string)
-- `tenure` (integer) - Loan tenure in months
+- `customerId` (string) - Customer ID
+- `accountId` (string) - Account ID
+- `loan_type` (string) - Type of loan: `personal` or `business`
+- `loan_amount` (number) - Loan amount in GH₵ (min: 1000, max: 1000000)
+- `loan_purpose` (string) - Purpose of the loan
+- `annual_income` (number) - Annual income in GH₵ (min: 0)
+- `employment_status` (string) - Employment status: `employed`, `self-employed`, `unemployed`, or `retired`
+- `preferred_term_months` (number) - Preferred loan term in months (min: 6, max: 360)
 
-**Optional Fields:**
-- `collateral` (string)
+**Validation Rules:**
+- `loan_type` must be either "personal" or "business"
+- `loan_amount` must be between 1,000 and 1,000,000 GH₵
+- `annual_income` must be >= 0
+- `employment_status` must be one of the valid enum values
+- `preferred_term_months` must be between 6 and 360 months
 
 **Response:**
 ```json
@@ -597,7 +656,7 @@ Submit a loan application.
     "id": "loan-004",
     "customerId": "cust-001",
     "accountId": "acc-001",
-    "amount": 5000.00,
+    "amount": 50000.00,
     "currency": "GHS",
     "purpose": "Business expansion",
     "tenure": 12,
@@ -606,7 +665,10 @@ Submit a loan application.
     "creditScore": 750,
     "eligible": true,
     "appliedAt": "2024-01-20T10:00:00Z",
-    "monthlyPayment": 437.50
+    "monthlyPayment": 4375.00,
+    "loanType": "business",
+    "annualIncome": 120000.00,
+    "employmentStatus": "employed"
   },
   "message": "Loan application submitted",
   "timestamp": "2024-01-20T10:00:00Z",
@@ -616,12 +678,19 @@ Submit a loan application.
 
 ### Get Loan Details
 
-**GET** `/loans/:loanId`
+**POST** `/loans/get`
 
 Get details of a specific loan application.
 
-**Path Parameters:**
-- `loanId` (string, required) - Loan ID
+**Request Body:**
+```json
+{
+  "loanId": "loan-001"
+}
+```
+
+**Required Fields:**
+- `loanId` (string) - Loan ID
 
 **Response:**
 ```json
@@ -682,12 +751,17 @@ List loans with optional filters.
 
 ### Check Loan Eligible (Checker)
 
-**GET** `/loans/:loanId/check-eligible`
+**GET** `/loans/check-eligible`
 
 **Checker endpoint** - Returns true/false indicating if loan is eligible (credit score >= 650).
 
-**Path Parameters:**
+**Query Parameters:**
 - `loanId` (string, required) - Loan ID
+
+**Example Request:**
+```
+GET /loans/check-eligible?loanId=loan-001
+```
 
 **Response:**
 ```json
@@ -710,12 +784,17 @@ List loans with optional filters.
 
 ### Check Loan Approved (Checker)
 
-**GET** `/loans/:loanId/check-approved`
+**GET** `/loans/check-approved`
 
 **Checker endpoint** - Returns true/false indicating if loan has been approved.
 
-**Path Parameters:**
+**Query Parameters:**
 - `loanId` (string, required) - Loan ID
+
+**Example Request:**
+```
+GET /loans/check-approved?loanId=loan-001
+```
 
 **Response:**
 ```json
@@ -737,12 +816,19 @@ List loans with optional filters.
 
 ### Approve Loan
 
-**POST** `/loans/:loanId/approve`
+**POST** `/loans/approve`
 
 Approve a loan application (admin action).
 
-**Path Parameters:**
-- `loanId` (string, required) - Loan ID
+**Request Body:**
+```json
+{
+  "loanId": "loan-001"
+}
+```
+
+**Required Fields:**
+- `loanId` (string) - Loan ID
 
 **Response:**
 ```json
@@ -765,19 +851,20 @@ Approve a loan application (admin action).
 
 ### Reject Loan
 
-**POST** `/loans/:loanId/reject`
+**POST** `/loans/reject`
 
 Reject a loan application.
-
-**Path Parameters:**
-- `loanId` (string, required) - Loan ID
 
 **Request Body:**
 ```json
 {
+  "loanId": "loan-001",
   "reason": "Insufficient credit score"
 }
 ```
+
+**Required Fields:**
+- `loanId` (string) - Loan ID
 
 **Optional Fields:**
 - `reason` (string) - Rejection reason
@@ -796,6 +883,59 @@ Reject a loan application.
   "requestId": "req-1234567890-abc123"
 }
 ```
+
+### Loan Repayment Calculator (Tool)
+
+**GET** `/loans/repayments/calculate`
+
+Calculate amortized installments, payoff date, and a month-by-month amortization schedule for any loan scenario.
+
+**Query Parameters:**
+- `principal` (number, required) - Loan amount in GHS
+- `annualRate` (number, required) - Annual interest rate (percentage)
+- `termMonths` (number, required) - Loan tenure in months (1 - 360)
+- `startDate` (string, optional) - Disbursement date `YYYY-MM-DD` (defaults to today)
+- `extraPayment` (number, optional) - Additional principal applied every month (default `0`)
+
+**Example Request:**
+```
+GET /loans/repayments/calculate?principal=50000&annualRate=28.5&termMonths=24&extraPayment=200
+```
+
+**Response (truncated):**
+```json
+{
+  "status": "success",
+  "data": {
+    "principal": 50000,
+    "annualRate": 28.5,
+    "termMonths": 24,
+    "baseMonthlyPayment": 2706.14,
+    "scheduledMonthlyPayment": 2906.14,
+    "totalPaid": 69747.36,
+    "totalInterest": 19747.36,
+    "projectedMonths": 22,
+    "payoffDate": "2026-12-01T00:00:00.000Z",
+    "amortizationSchedule": [
+      {
+        "installment": 1,
+        "dueDate": "2024-03-01T00:00:00.000Z",
+        "paymentAmount": 2906.14,
+        "principalComponent": 1791.64,
+        "interestComponent": 1114.5,
+        "remainingBalance": 48208.36
+      }
+      // ...
+    ],
+    "summary": "Pay ~GHS 2906.14 per month to clear the loan in 22 months."
+  },
+  "message": "Loan repayment projection generated",
+  "timestamp": "2024-02-01T10:00:00Z",
+  "requestId": "req-1234567890-abc123"
+}
+```
+
+**Use Case:** Let chatbots answer installment and payoff questions instantly before submitting a formal loan application.
 
 ---
 
@@ -896,12 +1036,19 @@ Purchase airtime for a phone number.
 
 ### Get Airtime Purchase Details
 
-**GET** `/airtime/purchases/:purchaseId`
+**POST** `/airtime/purchases/get`
 
 Get details of a specific airtime purchase.
 
-**Path Parameters:**
-- `purchaseId` (string, required) - Airtime purchase ID
+**Request Body:**
+```json
+{
+  "purchaseId": "air-001"
+}
+```
+
+**Required Fields:**
+- `purchaseId` (string) - Airtime purchase ID
 
 **Response:**
 ```json
@@ -959,12 +1106,17 @@ List airtime purchases with optional filters.
 
 ### Check Airtime Purchase Completed (Checker)
 
-**GET** `/airtime/purchases/:purchaseId/check-completed`
+**GET** `/airtime/purchases/check-completed`
 
 **Checker endpoint** - Returns true/false indicating if airtime purchase has been completed.
 
-**Path Parameters:**
+**Query Parameters:**
 - `purchaseId` (string, required) - Airtime purchase ID
+
+**Example Request:**
+```
+GET /airtime/purchases/check-completed?purchaseId=air-001
+```
 
 **Response:**
 ```json
@@ -989,16 +1141,109 @@ List airtime purchases with optional filters.
 
 ---
 
+## FX & Exchange Rates
+
+### Get Exchange Rate
+
+**GET** `/fx/exchange-rate`
+
+Retrieve the latest exchange rate between two currencies and optionally calculate the converted amount.
+
+**Query Parameters:**
+- `from` (string, required) - Base currency code (e.g., `GHS`)
+- `to` (string, required) - Quote currency code (e.g., `USD`)
+- `amount` (number, optional) - Amount to convert (defaults to `1`)
+
+**Example Request:**
+```
+GET /fx/exchange-rate?from=GHS&to=USD&amount=100
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "from": "GHS",
+    "to": "USD",
+    "rate": 0.084,
+    "amount": 100,
+    "convertedAmount": 8.4,
+    "source": "Bank of Ghana",
+    "retrievedAt": "2024-01-20T10:00:00Z"
+  },
+  "message": "Exchange rate retrieved",
+  "timestamp": "2024-01-20T10:00:00Z",
+  "requestId": "req-1234567890-abc123"
+}
+```
+
+**Use Case:** Fetch live FX rates before presenting cross-currency quotes or executing international transfers.
+
+---
+
+## Treasury Tools
+
+### Ghana Treasury Bill Calculator
+
+**GET** `/treasury/tbills/calculate`
+
+Calculate projected maturity payouts for Bank of Ghana treasury bills using published discount rates.
+
+**Query Parameters:**
+- `investmentAmount` (number, required) - Cash you plan to invest in GHS (purchase price)
+- `tenor` (number, required) - Allowed values: `91`, `182`, `364` (days)
+- `discountRate` (number, required) - Annual discount rate in percent (e.g., `26.5`)
+- `issueDate` (string, optional) - Auction settlement date in `YYYY-MM-DD` (defaults to today)
+
+**Example Request:**
+```
+GET /treasury/tbills/calculate?investmentAmount=10000&tenor=91&discountRate=26.5&issueDate=2024-02-01
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "investmentAmount": 10000,
+    "tenorDays": 91,
+    "discountRate": 26.5,
+    "discountFactor": 0.9339,
+    "faceValue": 10708.96,
+    "interestEarned": 708.96,
+    "annualizedYield": 27.74,
+    "issueDate": "2024-02-01T00:00:00.000Z",
+    "maturityDate": "2024-05-02T00:00:00.000Z",
+    "summary": "Invest GHS 10000 to receive GHS 10708.96 at maturity."
+  },
+  "message": "Treasury bill projection generated",
+  "timestamp": "2024-02-01T10:00:00Z",
+  "requestId": "req-1234567890-abc123"
+}
+```
+
+**Use Case:** Provide instant quotes for Ghana T-bill investments before placing auction bids or advising users on expected returns.
+
+---
+
 ## KYC (Know Your Customer)
 
 ### Get KYC Status
 
-**GET** `/kyc/customers/:customerId`
+**POST** `/kyc/customers/get`
 
 Get KYC status for a customer.
 
-**Path Parameters:**
-- `customerId` (string, required) - Customer ID
+**Request Body:**
+```json
+{
+  "customerId": "cust-001"
+}
+```
+
+**Required Fields:**
+- `customerId` (string) - Customer ID
 
 **Response:**
 ```json
@@ -1021,20 +1266,21 @@ Get KYC status for a customer.
 
 ### Refresh KYC Check
 
-**POST** `/kyc/customers/:customerId/refresh`
+**POST** `/kyc/customers/refresh`
 
 Refresh KYC check with updated documents.
-
-**Path Parameters:**
-- `customerId` (string, required) - Customer ID
 
 **Request Body:**
 ```json
 {
+  "customerId": "cust-001",
   "documents": ["id", "proof_of_address", "income_statement"],
   "level": "tier2"
 }
 ```
+
+**Required Fields:**
+- `customerId` (string) - Customer ID
 
 **Optional Fields:**
 - `documents` (array of strings) - List of submitted documents
@@ -1062,12 +1308,17 @@ Refresh KYC check with updated documents.
 
 ### Check KYC Approved (Checker)
 
-**GET** `/kyc/customers/:customerId/check-approved`
+**GET** `/kyc/customers/check-approved`
 
 **Checker endpoint** - Returns true/false indicating if KYC is approved.
 
-**Path Parameters:**
+**Query Parameters:**
 - `customerId` (string, required) - Customer ID
+
+**Example Request:**
+```
+GET /kyc/customers/check-approved?customerId=cust-001
+```
 
 **Response:**
 ```json
@@ -1096,12 +1347,19 @@ Refresh KYC check with updated documents.
 
 ### Get Account Limits
 
-**GET** `/limits/:accountId`
+**POST** `/limits/get`
 
 Get account transaction limits.
 
-**Path Parameters:**
-- `accountId` (string, required) - Account ID
+**Request Body:**
+```json
+{
+  "accountId": "acc-001"
+}
+```
+
+**Required Fields:**
+- `accountId` (string) - Account ID
 
 **Response:**
 ```json
@@ -1127,20 +1385,21 @@ Get account transaction limits.
 
 ### Update Account Limits
 
-**POST** `/limits/:accountId/update`
+**POST** `/limits/update`
 
 Update account transaction limits.
-
-**Path Parameters:**
-- `accountId` (string, required) - Account ID
 
 **Request Body:**
 ```json
 {
+  "accountId": "acc-001",
   "dailyLimit": 2000.00,
   "monthlyLimit": 20000.00
 }
 ```
+
+**Required Fields:**
+- `accountId` (string) - Account ID
 
 **Optional Fields:**
 - `dailyLimit` (number) - Must be >= 0
@@ -1166,20 +1425,18 @@ Update account transaction limits.
 
 ### Check Limit Available (Checker)
 
-**GET** `/limits/:accountId/check-available`
+**GET** `/limits/check-available`
 
 **Checker endpoint** - Returns true/false indicating if requested amount is within available limit.
 
-**Path Parameters:**
-- `accountId` (string, required) - Account ID
-
 **Query Parameters:**
+- `accountId` (string, required) - Account ID
 - `amount` (number, required) - Amount to check (must be > 0)
 - `period` (string, optional) - `daily` or `monthly` (default: `daily`)
 
 **Example Request:**
 ```
-GET /limits/acc-001/check-available?amount=500.00&period=daily
+GET /limits/check-available?accountId=acc-001&amount=500&period=daily
 ```
 
 **Response:**
@@ -1214,19 +1471,19 @@ GET /limits/acc-001/check-available?amount=500.00&period=daily
 **Steps:**
 1. Check account is active
    ```
-   GET /accounts/acc-001/check-active
+   GET /accounts/check-active?accountId=acc-001
    ```
    - If `result: false`, stop workflow
 
 2. Check KYC is approved
    ```
-   GET /kyc/customers/cust-001/check-approved
+   GET /kyc/customers/check-approved?customerId=cust-001
    ```
    - If `result: false`, request KYC refresh
 
 3. Check limit is available
    ```
-   GET /limits/acc-001/check-available?amount=200.00&period=daily
+   GET /limits/check-available?accountId=acc-001&amount=200&period=daily
    ```
    - If `result: false`, stop workflow
 
@@ -1238,7 +1495,7 @@ GET /limits/acc-001/check-available?amount=500.00&period=daily
 
 5. Check payment is ready
    ```
-   GET /payments/pay-003/check-ready
+   GET /payments/check-ready?paymentId=pay-003
    ```
    - If `result: true`, proceed with processing
 
@@ -1250,29 +1507,39 @@ GET /limits/acc-001/check-available?amount=500.00&period=daily
 1. Submit loan application
    ```
    POST /loans/apply
-   Body: { "customerId": "cust-001", "amount": 5000.00, ... }
+   Body: { 
+     "customerId": "cust-001", 
+     "accountId": "acc-001",
+     "loan_type": "business",
+     "loan_amount": 50000.00,
+     "loan_purpose": "Business expansion",
+     "annual_income": 120000.00,
+     "employment_status": "employed",
+     "preferred_term_months": 12
+   }
    ```
 
 2. Check loan eligibility
    ```
-   GET /loans/loan-004/check-eligible
+   GET /loans/check-eligible?loanId=loan-004
    ```
    - If `result: false`, reject loan
 
 3. Check KYC is approved
    ```
-   GET /kyc/customers/cust-001/check-approved
+   GET /kyc/customers/check-approved?customerId=cust-001
    ```
    - If `result: false`, request KYC refresh
 
 4. Approve loan (if eligible and KYC approved)
    ```
-   POST /loans/loan-004/approve
+   POST /loans/approve
+   Body: { "loanId": "loan-004" }
    ```
 
 5. Verify approval
    ```
-   GET /loans/loan-004/check-approved
+   GET /loans/check-approved?loanId=loan-004
    ```
    - Confirm `result: true` before disbursement
 
@@ -1294,7 +1561,7 @@ GET /limits/acc-001/check-available?amount=500.00&period=daily
 
 3. Check completion (poll until complete)
    ```
-   GET /airtime/purchases/air-003/check-completed
+   GET /airtime/purchases/check-completed?purchaseId=air-003
    ```
    - If `result: false`, wait and retry
    - If `result: true`, confirm delivery to user
@@ -1312,18 +1579,19 @@ GET /limits/acc-001/check-available?amount=500.00&period=daily
 
 2. Check KYC status
    ```
-   GET /kyc/customers/cust-004
+   POST /kyc/customers/get
+   Body: { "customerId": "cust-004" }
    ```
 
 3. If KYC not approved, refresh KYC
    ```
-   POST /kyc/customers/cust-004/refresh
-   Body: { "documents": ["id", "proof_of_address"], ... }
+   POST /kyc/customers/refresh
+   Body: { "customerId": "cust-004", "documents": ["id", "proof_of_address"], ... }
    ```
 
 4. Verify KYC approval
    ```
-   GET /kyc/customers/cust-004/check-approved
+   GET /kyc/customers/check-approved?customerId=cust-004
    ```
    - If `result: true`, account is fully activated
 
@@ -1333,19 +1601,20 @@ GET /limits/acc-001/check-available?amount=500.00&period=daily
 
 All checker endpoints follow this pattern:
 - **Method:** GET
+- **Query Parameters:** Carry the ID or filter fields (e.g., `?accountId=acc-001`)
 - **Response:** `{ result: true|false, reason: string, metadata: object }`
 - **Purpose:** Enable conditional workflow logic
 
 | Endpoint | Purpose | Use Case |
 |----------|---------|----------|
-| `GET /accounts/:accountId/check-active` | Verify account is active | Pre-transaction validation |
-| `GET /transactions/:txnId/check-cleared` | Verify transaction cleared | Post-transaction confirmation |
-| `GET /payments/:paymentId/check-ready` | Verify payment ready to process | Pre-payment validation |
-| `GET /loans/:loanId/check-eligible` | Verify loan eligibility | Pre-approval validation |
-| `GET /loans/:loanId/check-approved` | Verify loan approved | Pre-disbursement validation |
-| `GET /airtime/purchases/:purchaseId/check-completed` | Verify airtime delivered | Post-purchase confirmation |
-| `GET /kyc/customers/:customerId/check-approved` | Verify KYC approved | Pre-transaction validation |
-| `GET /limits/:accountId/check-available?amount=X&period=Y` | Verify limit available | Pre-transaction validation |
+| `GET /accounts/check-active` | Verify account is active | Pre-transaction validation |
+| `GET /transactions/check-cleared` | Verify transaction cleared | Post-transaction confirmation |
+| `GET /payments/check-ready` | Verify payment ready to process | Pre-payment validation |
+| `GET /loans/check-eligible` | Verify loan eligibility | Pre-approval validation |
+| `GET /loans/check-approved` | Verify loan approved | Pre-disbursement validation |
+| `GET /airtime/purchases/check-completed` | Verify airtime delivered | Post-purchase confirmation |
+| `GET /kyc/customers/check-approved` | Verify KYC approved | Pre-transaction validation |
+| `GET /limits/check-available` | Verify limit available | Pre-transaction validation |
 
 ---
 
@@ -1392,12 +1661,13 @@ All checker endpoints follow this pattern:
 - **Airtime:** `/airtime/*`
 - **KYC:** `/kyc/*`
 - **Limits:** `/limits/*`
+- **FX:** `/fx/*`
+- **Treasury:** `/treasury/*`
 
 ### Common HTTP Methods
 
-- **GET** - Retrieve data (list or single item)
-- **POST** - Create new resources or execute actions
-- **PATCH** - Update specific fields
+- **GET** - Retrieve data (list endpoints and checker lookups)
+- **POST** - All write operations (create, get single item, update, actions)
 
 ### Common Status Codes
 

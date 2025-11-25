@@ -253,6 +253,49 @@ let accountLimits = [
   }
 ];
 
+const exchangeRates = {
+  // GHS (Ghana Cedi) as Base: 1 GHS buys X of the foreign currency
+  GHS: {
+    USD: 0.08957, // 1 GHS / 11.1648 GHS
+    EUR: 0.08293, // Calculated: USD/GHS * Global EUR/USD rate (0.08957 * 0.925)
+    NGN: 100.000, // Indicative: 1 GHS buys ~100 NGN
+    GBP: 0.07052, // Calculated: USD/GHS * Global GBP/USD rate (0.08957 * 0.787)
+    GHS: 1
+  },
+  // USD (US Dollar) as Base: 1 USD buys X of the foreign currency
+  USD: {
+    GHS: 11.1648, // Bank of Ghana Interbank Rate
+    EUR: 0.9250, // Global Cross-Rate
+    NGN: 1116.48, // Calculated: USD/GHS * GHS/NGN (11.1648 * 100)
+    GBP: 0.7870, // Global Cross-Rate
+    USD: 1
+  },
+  // EUR (Euro) as Base: 1 EUR buys X of the foreign currency
+  EUR: {
+    GHS: 12.0679, // Calculated: USD/GHS / EUR/USD (11.1648 / 0.925)
+    USD: 1.0810, // Inverse of Global EUR/USD
+    NGN: 1206.79, // Calculated: EUR/GHS * GHS/NGN
+    GBP: 0.8440, // Global Cross-Rate
+    EUR: 1
+  },
+  // NGN (Nigerian Naira) as Base: 1 NGN buys X of the foreign currency
+  NGN: {
+    GHS: 0.0100, // Inverse of GHS/NGN (1/100)
+    USD: 0.000895, // Inverse of USD/NGN (1/1116.48)
+    EUR: 0.000829, // Inverse of EUR/NGN (1/1206.79)
+    GBP: 0.000683, // Inverse of GBP/NGN (1/1463.0)
+    NGN: 1
+  },
+  // GBP (Pound Sterling) as Base: 1 GBP buys X of the foreign currency
+  GBP: {
+    GHS: 14.1865, // Calculated: USD/GHS / GBP/USD (11.1648 / 0.787)
+    USD: 1.2706, // Inverse of Global GBP/USD
+    EUR: 1.1848, // Global Cross-Rate
+    NGN: 1418.65, // Calculated: GBP/GHS * GHS/NGN
+    GBP: 1
+  }
+};
+
 // Helper functions to manage data
 export const getAccounts = () => accounts;
 export const getAccountById = (id) => accounts.find(acc => acc.id === id);
@@ -322,7 +365,10 @@ export const addLoan = (loan) => {
     approvedAt: null,
     disbursedAt: null,
     creditScore: loan.creditScore || Math.floor(Math.random() * 200) + 500,
-    eligible: (loan.creditScore || Math.floor(Math.random() * 200) + 500) >= 650
+    eligible: (loan.creditScore || Math.floor(Math.random() * 200) + 500) >= 650,
+    loanType: loan.loanType || null,
+    annualIncome: loan.annualIncome || null,
+    employmentStatus: loan.employmentStatus || null
   };
   loans.push(newLoan);
   return newLoan;
@@ -411,5 +457,36 @@ export const updateAccountLimit = (accountId, updates) => {
   }
   accountLimits[index] = { ...accountLimits[index], ...updates, updatedAt: new Date().toISOString() };
   return accountLimits[index];
+};
+
+export const getExchangeRate = (fromCurrency, toCurrency) => {
+  if (!fromCurrency || !toCurrency) return null;
+
+  const from = fromCurrency.toUpperCase();
+  const to = toCurrency.toUpperCase();
+
+  if (from === to) {
+    return {
+      rate: 1,
+      base: from,
+      quote: to,
+      source: 'Bank of Ghana',
+      retrievedAt: new Date().toISOString()
+    };
+  }
+
+  const rate = exchangeRates[from]?.[to];
+
+  if (!rate) {
+    return null;
+  }
+
+  return {
+    rate,
+    base: from,
+    quote: to,
+    source: 'Bank of Ghana',
+    retrievedAt: new Date().toISOString()
+  };
 };
 

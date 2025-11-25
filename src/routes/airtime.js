@@ -167,17 +167,22 @@ router.post('/purchase', (req, res) => {
 
 /**
  * @swagger
- * /airtime/purchases/{purchaseId}:
- *   get:
+ * /airtime/purchases/get:
+ *   post:
  *     summary: Get airtime purchase details by ID
  *     tags: [Airtime]
- *     parameters:
- *       - in: path
- *         name: purchaseId
- *         required: true
- *         schema:
- *           type: string
- *         description: Airtime purchase ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - purchaseId
+ *             properties:
+ *               purchaseId:
+ *                 type: string
+ *                 example: air-001
  *     responses:
  *       200:
  *         description: Airtime purchase details
@@ -197,8 +202,19 @@ router.post('/purchase', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/purchases/:purchaseId', (req, res) => {
-  const purchase = getAirtimePurchaseById(req.params.purchaseId);
+router.post('/purchases/get', (req, res) => {
+  const { purchaseId } = req.body;
+  
+  if (!purchaseId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: purchaseId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const purchase = getAirtimePurchaseById(purchaseId);
   
   if (!purchase) {
     return res.status(404).json({
@@ -289,18 +305,18 @@ router.get('/purchases', (req, res) => {
 
 /**
  * @swagger
- * /airtime/purchases/{purchaseId}/check-completed:
+ * /airtime/purchases/check-completed:
  *   get:
  *     summary: Checker endpoint - Verify if airtime purchase is completed
  *     description: Returns true/false indicating if the airtime purchase has been completed. Used for workflow conditional logic.
  *     tags: [Airtime]
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: purchaseId
  *         required: true
  *         schema:
  *           type: string
- *         description: Airtime purchase ID
+ *           example: air-001
  *     responses:
  *       200:
  *         description: Checker response
@@ -309,14 +325,25 @@ router.get('/purchases', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.get('/purchases/:purchaseId/check-completed', (req, res) => {
-  const purchase = getAirtimePurchaseById(req.params.purchaseId);
+router.get('/purchases/check-completed', (req, res) => {
+  const { purchaseId } = req.query;
+  
+  if (!purchaseId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: purchaseId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const purchase = getAirtimePurchaseById(purchaseId);
 
   if (!purchase) {
     return res.json({
       result: false,
       reason: 'Airtime purchase not found',
-      metadata: { purchaseId: req.params.purchaseId },
+      metadata: { purchaseId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });

@@ -7,6 +7,16 @@ import {
 } from '../data/mockData.js';
 
 const router = express.Router();
+const addMonthsUtc = (date, months) => {
+  const result = new Date(date);
+  if (Number.isNaN(result.getTime())) {
+    return null;
+  }
+  result.setUTCMonth(result.getUTCMonth() + months);
+  return result;
+};
+
+const formatAmount = (value, decimals = 2) => Number.parseFloat(value.toFixed(decimals));
 
 /**
  * @swagger
@@ -23,9 +33,12 @@ const router = express.Router();
  *             required:
  *               - customerId
  *               - accountId
- *               - amount
- *               - purpose
- *               - tenure
+ *               - loan_type
+ *               - loan_amount
+ *               - loan_purpose
+ *               - annual_income
+ *               - employment_status
+ *               - preferred_term_months
  *             properties:
  *               customerId:
  *                 type: string
@@ -33,18 +46,37 @@ const router = express.Router();
  *               accountId:
  *                 type: string
  *                 example: acc-001
- *               amount:
+ *               loan_type:
+ *                 type: string
+ *                 enum: [personal, business]
+ *                 description: What type of loan are you looking for - personal or business
+ *                 example: business
+ *               loan_amount:
  *                 type: number
- *                 example: 5000.00
- *               purpose:
+ *                 minimum: 1000
+ *                 maximum: 1000000
+ *                 description: How much would you like to borrow (in GH₵)
+ *                 example: 50000.00
+ *               loan_purpose:
  *                 type: string
+ *                 description: What is the purpose of this loan
  *                 example: Business expansion
- *               tenure:
- *                 type: integer
- *                 example: 12
- *               collateral:
+ *               annual_income:
+ *                 type: number
+ *                 minimum: 0
+ *                 description: What is your annual income (in GH₵)
+ *                 example: 120000.00
+ *               employment_status:
  *                 type: string
- *                 example: Property documents
+ *                 enum: [employed, self-employed, unemployed, retired]
+ *                 description: What is your current employment status
+ *                 example: employed
+ *               preferred_term_months:
+ *                 type: number
+ *                 minimum: 6
+ *                 maximum: 360
+ *                 description: What loan term would you prefer (in months)
+ *                 example: 12
  *     responses:
  *       201:
  *         description: Loan application submitted
@@ -58,51 +90,128 @@ const router = express.Router();
  *                     data:
  *                       $ref: '#/components/schemas/Loan'
  *       400:
- *         description: Missing required fields or invalid amount
+ *         description: Missing required fields or invalid values
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/apply', (req, res) => {
-  const { customerId, accountId, amount, purpose, tenure, collateral } = req.body;
+  const { 
+    customerId, 
+    accountId, 
+    loan_type, 
+    loan_amount, 
+    loan_purpose, 
+    annual_income, 
+    employment_status, 
+    preferred_term_months 
+  } = req.body;
 
-  if (!customerId || !accountId || !amount || !purpose || !tenure) {
+  // Validate required fields
+  if (!customerId || !accountId || !loan_type || !loan_amount || !loan_purpose || 
+      annual_income === undefined || !employment_status || !preferred_term_months) {
     return res.status(400).json({
       status: 'error',
-      message: 'Missing required fields: customerId, accountId, amount, purpose, tenure',
+      message: 'Missing required fields: customerId, accountId, loan_type, loan_amount, loan_purpose, annual_income, employment_status, preferred_term_months',
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
   }
 
-  if (amount <= 0) {
+  // Validate loan_type enum
+  if (!['personal', 'business'].includes(loan_type)) {
     return res.status(400).json({
       status: 'error',
-      message: 'Amount must be greater than 0',
+      message: 'loan_type must be either "personal" or "business"',
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
   }
 
-  // Calculate interest rate based on amount (simplified)
-  const interestRate = amount > 10000 ? 7.5 : amount > 5000 ? 8.5 : 10.0;
-  const monthlyPayment = (amount * (1 + interestRate / 100)) / tenure;
+  // Validate loan_amount range
+  if (loan_amount < 1000 || loan_amount > 1000000) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'loan_amount must be between 1000 and 1000000 GH₵',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
 
-  // Simulate credit score
-  const creditScore = Math.floor(Math.random() * 200) + 500;
+  // Validate annual_income
+  if (annual_income < 0) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'annual_income must be >= 0',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Validate employment_status enum
+  if (!['employed', 'self-employed', 'unemployed', 'retired'].includes(employment_status)) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'employment_status must be one of: employed, self-employed, unemployed, retired',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Validate preferred_term_months range
+  if (preferred_term_months < 6 || preferred_term_months > 360) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'preferred_term_months must be between 6 and 360 months',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Calculate interest rate based on loan type, amount, and employment status
+  let interestRate = 10.0; // Default
+  if (loan_type === 'business') {
+    interestRate = loan_amount > 50000 ? 7.5 : loan_amount > 20000 ? 8.5 : 9.5;
+  } else {
+    interestRate = loan_amount > 50000 ? 8.0 : loan_amount > 20000 ? 9.0 : 10.0;
+  }
+  
+  // Adjust based on employment status
+  if (employment_status === 'unemployed') {
+    interestRate += 2.0;
+  } else if (employment_status === 'retired') {
+    interestRate += 1.0;
+  }
+
+  const monthlyPayment = (loan_amount * (1 + interestRate / 100)) / preferred_term_months;
+
+  // Simulate credit score based on income and employment
+  let creditScore = 500;
+  if (annual_income > 200000) creditScore += 150;
+  else if (annual_income > 100000) creditScore += 100;
+  else if (annual_income > 50000) creditScore += 50;
+  
+  if (employment_status === 'employed') creditScore += 50;
+  else if (employment_status === 'self-employed') creditScore += 25;
+  else if (employment_status === 'unemployed') creditScore -= 50;
+  
+  creditScore += Math.floor(Math.random() * 100) - 50; // Random variation
+  creditScore = Math.max(300, Math.min(850, creditScore)); // Clamp between 300-850
 
   const loan = addLoan({
     customerId,
     accountId,
-    amount,
+    amount: loan_amount,
     currency: 'GHS',
-    purpose,
-    tenure,
+    purpose: loan_purpose,
+    tenure: preferred_term_months,
     interestRate,
     monthlyPayment,
     creditScore,
-    collateral: collateral || null
+    loanType: loan_type,
+    annualIncome: annual_income,
+    employmentStatus: employment_status
   });
 
   res.status(201).json({
@@ -116,17 +225,22 @@ router.post('/apply', (req, res) => {
 
 /**
  * @swagger
- * /loans/{loanId}:
- *   get:
+ * /loans/get:
+ *   post:
  *     summary: Get loan application details by ID
  *     tags: [Loans]
- *     parameters:
- *       - in: path
- *         name: loanId
- *         required: true
- *         schema:
- *           type: string
- *         description: Loan ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - loanId
+ *             properties:
+ *               loanId:
+ *                 type: string
+ *                 example: loan-001
  *     responses:
  *       200:
  *         description: Loan details
@@ -146,8 +260,19 @@ router.post('/apply', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:loanId', (req, res) => {
-  const loan = getLoanById(req.params.loanId);
+router.post('/get', (req, res) => {
+  const { loanId } = req.body;
+  
+  if (!loanId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: loanId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const loan = getLoanById(loanId);
   
   if (!loan) {
     return res.status(404).json({
@@ -230,18 +355,18 @@ router.get('/', (req, res) => {
 
 /**
  * @swagger
- * /loans/{loanId}/check-eligible:
+ * /loans/check-eligible:
  *   get:
  *     summary: Checker endpoint - Verify loan eligibility
  *     description: Returns true/false indicating if the loan is eligible (credit score >= 650). Used for workflow conditional logic.
  *     tags: [Loans]
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: loanId
  *         required: true
  *         schema:
  *           type: string
- *         description: Loan ID
+ *           example: loan-001
  *     responses:
  *       200:
  *         description: Checker response
@@ -250,14 +375,25 @@ router.get('/', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.get('/:loanId/check-eligible', (req, res) => {
-  const loan = getLoanById(req.params.loanId);
+router.get('/check-eligible', (req, res) => {
+  const { loanId } = req.query;
+  
+  if (!loanId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: loanId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const loan = getLoanById(loanId);
 
   if (!loan) {
     return res.json({
       result: false,
       reason: 'Loan not found',
-      metadata: { loanId: req.params.loanId },
+      metadata: { loanId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
@@ -284,18 +420,18 @@ router.get('/:loanId/check-eligible', (req, res) => {
 
 /**
  * @swagger
- * /loans/{loanId}/check-approved:
+ * /loans/check-approved:
  *   get:
  *     summary: Checker endpoint - Verify loan approval status
  *     description: Returns true/false indicating if the loan has been approved. Used for workflow conditional logic.
  *     tags: [Loans]
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: loanId
  *         required: true
  *         schema:
  *           type: string
- *         description: Loan ID
+ *           example: loan-001
  *     responses:
  *       200:
  *         description: Checker response
@@ -304,14 +440,25 @@ router.get('/:loanId/check-eligible', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.get('/:loanId/check-approved', (req, res) => {
-  const loan = getLoanById(req.params.loanId);
+router.get('/check-approved', (req, res) => {
+  const { loanId } = req.query;
+  
+  if (!loanId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: loanId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const loan = getLoanById(loanId);
 
   if (!loan) {
     return res.json({
       result: false,
       reason: 'Loan not found',
-      metadata: { loanId: req.params.loanId },
+      metadata: { loanId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
@@ -338,17 +485,22 @@ router.get('/:loanId/check-approved', (req, res) => {
 
 /**
  * @swagger
- * /loans/{loanId}/approve:
+ * /loans/approve:
  *   post:
  *     summary: Approve a loan (admin action)
  *     tags: [Loans]
- *     parameters:
- *       - in: path
- *         name: loanId
- *         required: true
- *         schema:
- *           type: string
- *         description: Loan ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - loanId
+ *             properties:
+ *               loanId:
+ *                 type: string
+ *                 example: loan-001
  *     responses:
  *       200:
  *         description: Loan approved and disbursed
@@ -374,8 +526,19 @@ router.get('/:loanId/check-approved', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/:loanId/approve', (req, res) => {
-  const loan = getLoanById(req.params.loanId);
+router.post('/approve', (req, res) => {
+  const { loanId } = req.body;
+  
+  if (!loanId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: loanId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const loan = getLoanById(loanId);
 
   if (!loan) {
     return res.status(404).json({
@@ -395,7 +558,7 @@ router.post('/:loanId/approve', (req, res) => {
     });
   }
 
-  const updatedLoan = updateLoan(req.params.loanId, { 
+  const updatedLoan = updateLoan(loanId, { 
     status: 'approved',
     disbursedAt: new Date().toISOString(),
     remainingBalance: loan.amount
@@ -412,23 +575,22 @@ router.post('/:loanId/approve', (req, res) => {
 
 /**
  * @swagger
- * /loans/{loanId}/reject:
+ * /loans/reject:
  *   post:
  *     summary: Reject a loan application
  *     tags: [Loans]
- *     parameters:
- *       - in: path
- *         name: loanId
- *         required: true
- *         schema:
- *           type: string
- *         description: Loan ID
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - loanId
  *             properties:
+ *               loanId:
+ *                 type: string
+ *                 example: loan-001
  *               reason:
  *                 type: string
  *                 example: Insufficient credit score
@@ -457,9 +619,19 @@ router.post('/:loanId/approve', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/:loanId/reject', (req, res) => {
-  const { reason } = req.body;
-  const loan = getLoanById(req.params.loanId);
+router.post('/reject', (req, res) => {
+  const { loanId, reason } = req.body;
+  
+  if (!loanId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: loanId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const loan = getLoanById(loanId);
 
   if (!loan) {
     return res.status(404).json({
@@ -479,7 +651,7 @@ router.post('/:loanId/reject', (req, res) => {
     });
   }
 
-  const updatedLoan = updateLoan(req.params.loanId, { 
+  const updatedLoan = updateLoan(loanId, { 
     status: 'rejected',
     rejectionReason: reason || 'Application does not meet requirements'
   });
@@ -488,6 +660,193 @@ router.post('/:loanId/reject', (req, res) => {
     status: 'success',
     data: updatedLoan,
     message: 'Loan application rejected',
+    timestamp: new Date().toISOString(),
+    requestId: req.requestId
+  });
+});
+
+/**
+ * @swagger
+ * /loans/repayments/calculate:
+ *   get:
+ *     summary: Loan repayment calculator
+ *     description: Calculates amortized monthly payments, total interest and a month-by-month repayment schedule.
+ *     tags: [Loans]
+ *     parameters:
+ *       - in: query
+ *         name: principal
+ *         required: true
+ *         schema:
+ *           type: number
+ *           example: 50000
+ *         description: Loan amount in GHS.
+ *       - in: query
+ *         name: annualRate
+ *         required: true
+ *         schema:
+ *           type: number
+ *           example: 28.5
+ *         description: Annual interest rate (percentage).
+ *       - in: query
+ *         name: termMonths
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           example: 24
+ *         description: Loan tenure in months.
+ *       - in: query
+ *         name: startDate
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: 2024-02-01
+ *         description: First disbursement date (defaults to today, UTC).
+ *       - in: query
+ *         name: extraPayment
+ *         required: false
+ *         schema:
+ *           type: number
+ *           example: 200
+ *         description: Optional extra amount applied to principal each month.
+ *     responses:
+ *       200:
+ *         description: Repayment projection generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/LoanRepaymentCalculation'
+ *       400:
+ *         description: Invalid input parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/repayments/calculate', (req, res) => {
+  const { principal, annualRate, termMonths, startDate, extraPayment = '0' } = req.query;
+
+  if (!principal || !annualRate || !termMonths) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required query parameters: principal, annualRate, termMonths',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  const principalAmount = Number.parseFloat(principal);
+  const annualRatePercent = Number.parseFloat(annualRate);
+  const term = Number.parseInt(termMonths, 10);
+  const extra = Number.parseFloat(extraPayment);
+
+  if (Number.isNaN(principalAmount) || principalAmount <= 0) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'principal must be a positive number',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  if (Number.isNaN(annualRatePercent) || annualRatePercent < 0 || annualRatePercent > 200) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'annualRate must be between 0 and 200 percent',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  if (Number.isNaN(term) || term <= 0 || term > 360) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'termMonths must be between 1 and 360',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  if (Number.isNaN(extra) || extra < 0) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'extraPayment must be >= 0',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  const scheduleStartDate = startDate ? new Date(startDate) : new Date();
+  if (Number.isNaN(scheduleStartDate.getTime())) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'startDate must be a valid date (YYYY-MM-DD)',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  const monthlyRate = annualRatePercent / 100 / 12;
+  const basePayment = monthlyRate === 0
+    ? principalAmount / term
+    : (principalAmount * monthlyRate) / (1 - Math.pow(1 + monthlyRate, -term));
+
+  let balance = principalAmount;
+  let totalInterest = 0;
+  let totalPaid = 0;
+  const installments = [];
+
+  for (let i = 1; i <= term && balance > 0; i += 1) {
+    const interestComponent = monthlyRate === 0 ? 0 : balance * monthlyRate;
+    let paymentAmount = basePayment + extra;
+    const principalComponent = paymentAmount - interestComponent;
+
+    if (principalComponent > balance) {
+      paymentAmount = balance + interestComponent;
+    }
+
+    const appliedPrincipal = paymentAmount - interestComponent;
+    balance = Math.max(0, balance - appliedPrincipal);
+
+    totalInterest += interestComponent;
+    totalPaid += paymentAmount;
+
+    const dueDate = addMonthsUtc(scheduleStartDate, i);
+
+    installments.push({
+      installment: i,
+      dueDate: dueDate ? dueDate.toISOString() : null,
+      paymentAmount: formatAmount(paymentAmount),
+      principalComponent: formatAmount(appliedPrincipal),
+      interestComponent: formatAmount(interestComponent),
+      remainingBalance: formatAmount(balance)
+    });
+  }
+
+  const scheduledPayment = formatAmount(basePayment + extra);
+  const responseData = {
+    principal: formatAmount(principalAmount),
+    annualRate: formatAmount(annualRatePercent, 4),
+    termMonths: term,
+    baseMonthlyPayment: formatAmount(basePayment),
+    scheduledMonthlyPayment: scheduledPayment,
+    totalPaid: formatAmount(totalPaid),
+    totalInterest: formatAmount(totalInterest),
+    projectedMonths: installments.length,
+    payoffDate: installments.length ? installments[installments.length - 1].dueDate : null,
+    amortizationSchedule: installments,
+    summary: `Pay ~GHS ${scheduledPayment} per month to clear the loan in ${installments.length} months.`
+  };
+
+  res.json({
+    status: 'success',
+    data: responseData,
+    message: 'Loan repayment projection generated',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

@@ -8,17 +8,22 @@ const router = express.Router();
 
 /**
  * @swagger
- * /kyc/customers/{customerId}:
- *   get:
+ * /kyc/customers/get:
+ *   post:
  *     summary: Get KYC status for a customer
  *     tags: [KYC]
- *     parameters:
- *       - in: path
- *         name: customerId
- *         required: true
- *         schema:
- *           type: string
- *         description: Customer ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - customerId
+ *             properties:
+ *               customerId:
+ *                 type: string
+ *                 example: cust-001
  *     responses:
  *       200:
  *         description: KYC record
@@ -38,8 +43,19 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/customers/:customerId', (req, res) => {
-  const kyc = getKycRecord(req.params.customerId);
+router.post('/customers/get', (req, res) => {
+  const { customerId } = req.body;
+  
+  if (!customerId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: customerId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const kyc = getKycRecord(customerId);
   
   if (!kyc) {
     return res.status(404).json({
@@ -60,23 +76,22 @@ router.get('/customers/:customerId', (req, res) => {
 
 /**
  * @swagger
- * /kyc/customers/{customerId}/refresh:
+ * /kyc/customers/refresh:
  *   post:
  *     summary: Refresh KYC check
  *     tags: [KYC]
- *     parameters:
- *       - in: path
- *         name: customerId
- *         required: true
- *         schema:
- *           type: string
- *         description: Customer ID
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - customerId
  *             properties:
+ *               customerId:
+ *                 type: string
+ *                 example: cust-001
  *               documents:
  *                 type: array
  *                 items:
@@ -98,16 +113,26 @@ router.get('/customers/:customerId', (req, res) => {
  *                     data:
  *                       $ref: '#/components/schemas/KYC'
  */
-router.post('/customers/:customerId/refresh', (req, res) => {
-  const { documents, level } = req.body;
-  const existingKyc = getKycRecord(req.params.customerId);
+router.post('/customers/refresh', (req, res) => {
+  const { customerId, documents, level } = req.body;
+  
+  if (!customerId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: customerId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const existingKyc = getKycRecord(customerId);
 
   // Simulate KYC refresh logic
   const hasAllDocuments = documents && documents.length >= 2;
   const riskRating = hasAllDocuments ? 'low' : 'medium';
   const newStatus = hasAllDocuments ? 'approved' : 'pending';
 
-  const kyc = updateKycRecord(req.params.customerId, {
+  const kyc = updateKycRecord(customerId, {
     status: newStatus,
     level: level || existingKyc?.level || 'tier1',
     documents: documents || existingKyc?.documents || [],
@@ -126,18 +151,18 @@ router.post('/customers/:customerId/refresh', (req, res) => {
 
 /**
  * @swagger
- * /kyc/customers/{customerId}/check-approved:
+ * /kyc/customers/check-approved:
  *   get:
  *     summary: Checker endpoint - Verify if KYC is approved
  *     description: Returns true/false indicating if the KYC is approved. Used for workflow conditional logic.
  *     tags: [KYC]
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: customerId
  *         required: true
  *         schema:
  *           type: string
- *         description: Customer ID
+ *           example: cust-001
  *     responses:
  *       200:
  *         description: Checker response
@@ -146,14 +171,25 @@ router.post('/customers/:customerId/refresh', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.get('/customers/:customerId/check-approved', (req, res) => {
-  const kyc = getKycRecord(req.params.customerId);
+router.get('/customers/check-approved', (req, res) => {
+  const { customerId } = req.query;
+  
+  if (!customerId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: customerId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const kyc = getKycRecord(customerId);
 
   if (!kyc) {
     return res.json({
       result: false,
       reason: 'KYC record not found',
-      metadata: { customerId: req.params.customerId },
+      metadata: { customerId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });

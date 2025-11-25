@@ -15,6 +15,31 @@
         "checker": false
       }
     },
+    "treasury": {
+      "tBillCalculator": {
+        "method": "GET",
+        "path": "/treasury/tbills/calculate",
+        "description": "Calculate Ghana treasury bill returns",
+        "parameters": {
+          "query": ["investmentAmount", "tenor", "discountRate", "issueDate"]
+        },
+        "responseType": "object",
+        "checker": false,
+        "workflowUse": "Pre-bid projections for 91/182/364 day bills"
+      }
+    },
+    "fx": {
+      "exchangeRate": {
+        "method": "GET",
+        "path": "/fx/exchange-rate",
+        "description": "Get exchange rate between two currencies",
+        "parameters": {
+          "query": ["from", "to", "amount"]
+        },
+        "responseType": "object",
+        "checker": false
+      }
+    },
     "accounts": {
       "list": {
         "method": "GET",
@@ -27,11 +52,13 @@
         "checker": false
       },
       "get": {
-        "method": "GET",
-        "path": "/accounts/{accountId}",
+        "method": "POST",
+        "path": "/accounts/get",
         "description": "Get account details by ID",
         "parameters": {
-          "path": ["accountId"]
+          "body": {
+            "required": ["accountId"]
+          }
         },
         "responseType": "object",
         "checker": false
@@ -50,13 +77,12 @@
         "checker": false
       },
       "updateStatus": {
-        "method": "PATCH",
-        "path": "/accounts/{accountId}/status",
+        "method": "POST",
+        "path": "/accounts/update-status",
         "description": "Update account status",
         "parameters": {
-          "path": ["accountId"],
           "body": {
-            "required": ["status"]
+            "required": ["accountId", "status"]
           }
         },
         "responseType": "object",
@@ -64,10 +90,10 @@
       },
       "checkActive": {
         "method": "GET",
-        "path": "/accounts/{accountId}/check-active",
+        "path": "/accounts/check-active",
         "description": "Checker: Verify if account is active",
         "parameters": {
-          "path": ["accountId"]
+          "query": ["accountId"]
         },
         "responseType": "checker",
         "checker": true,
@@ -86,11 +112,13 @@
         "checker": false
       },
       "get": {
-        "method": "GET",
-        "path": "/transactions/{txnId}",
+        "method": "POST",
+        "path": "/transactions/get",
         "description": "Get transaction details by ID",
         "parameters": {
-          "path": ["txnId"]
+          "body": {
+            "required": ["txnId"]
+          }
         },
         "responseType": "object",
         "checker": false
@@ -110,10 +138,10 @@
       },
       "checkCleared": {
         "method": "GET",
-        "path": "/transactions/{txnId}/check-cleared",
+        "path": "/transactions/check-cleared",
         "description": "Checker: Verify if transaction has been cleared",
         "parameters": {
-          "path": ["txnId"]
+          "query": ["txnId"]
         },
         "responseType": "checker",
         "checker": true,
@@ -135,31 +163,35 @@
         "checker": false
       },
       "get": {
-        "method": "GET",
-        "path": "/payments/{paymentId}",
+        "method": "POST",
+        "path": "/payments/get",
         "description": "Get payment details by ID",
         "parameters": {
-          "path": ["paymentId"]
+          "body": {
+            "required": ["paymentId"]
+          }
         },
         "responseType": "object",
         "checker": false
       },
       "cancel": {
         "method": "POST",
-        "path": "/payments/{paymentId}/cancel",
+        "path": "/payments/cancel",
         "description": "Cancel a pending payment",
         "parameters": {
-          "path": ["paymentId"]
+          "body": {
+            "required": ["paymentId"]
+          }
         },
         "responseType": "object",
         "checker": false
       },
       "checkReady": {
         "method": "GET",
-        "path": "/payments/{paymentId}/check-ready",
+        "path": "/payments/check-ready",
         "description": "Checker: Verify if payment is ready to process",
         "parameters": {
-          "path": ["paymentId"]
+          "query": ["paymentId"]
         },
         "responseType": "checker",
         "checker": true,
@@ -173,19 +205,68 @@
         "description": "Submit a loan application",
         "parameters": {
           "body": {
-            "required": ["customerId", "accountId", "amount", "purpose", "tenure"],
-            "optional": ["collateral"]
+            "required": [
+              "customerId",
+              "accountId",
+              "loan_type",
+              "loan_amount",
+              "loan_purpose",
+              "annual_income",
+              "employment_status",
+              "preferred_term_months"
+            ]
           }
         },
         "responseType": "object",
-        "checker": false
+        "checker": false,
+        "validation": {
+          "loan_type": {
+            "enum": ["personal", "business"],
+            "type": "string",
+            "required": true,
+            "description": "What type of loan are you looking for - personal or business"
+          },
+          "loan_amount": {
+            "max": 1000000,
+            "min": 1000,
+            "type": "number",
+            "required": true,
+            "description": "How much would you like to borrow (in GH₵)"
+          },
+          "loan_purpose": {
+            "type": "string",
+            "required": true,
+            "description": "What is the purpose of this loan"
+          },
+          "annual_income": {
+            "min": 0,
+            "type": "number",
+            "required": true,
+            "description": "What is your annual income (in GH₵)"
+          },
+          "employment_status": {
+            "enum": ["employed", "self-employed", "unemployed", "retired"],
+            "type": "string",
+            "required": true,
+            "description": "What is your current employment status"
+          },
+          "preferred_term_months": {
+            "max": 360,
+            "min": 6,
+            "type": "number",
+            "required": true,
+            "description": "What loan term would you prefer (in months)"
+          }
+        }
       },
       "get": {
-        "method": "GET",
-        "path": "/loans/{loanId}",
+        "method": "POST",
+        "path": "/loans/get",
         "description": "Get loan application details by ID",
         "parameters": {
-          "path": ["loanId"]
+          "body": {
+            "required": ["loanId"]
+          }
         },
         "responseType": "object",
         "checker": false
@@ -202,10 +283,10 @@
       },
       "checkEligible": {
         "method": "GET",
-        "path": "/loans/{loanId}/check-eligible",
+        "path": "/loans/check-eligible",
         "description": "Checker: Verify loan eligibility",
         "parameters": {
-          "path": ["loanId"]
+          "query": ["loanId"]
         },
         "responseType": "checker",
         "checker": true,
@@ -213,32 +294,45 @@
       },
       "checkApproved": {
         "method": "GET",
-        "path": "/loans/{loanId}/check-approved",
+        "path": "/loans/check-approved",
         "description": "Checker: Verify loan approval status",
         "parameters": {
-          "path": ["loanId"]
+          "query": ["loanId"]
         },
         "responseType": "checker",
         "checker": true,
         "workflowUse": "Pre-disbursement validation"
       },
+      "repaymentCalculator": {
+        "method": "GET",
+        "path": "/loans/repayments/calculate",
+        "description": "Loan repayment calculator for monthly installments and amortization schedules",
+        "parameters": {
+          "query": ["principal", "annualRate", "termMonths", "startDate", "extraPayment"]
+        },
+        "responseType": "object",
+        "checker": false,
+        "workflowUse": "Answer installment/payoff questions before loan origination"
+      },
       "approve": {
         "method": "POST",
-        "path": "/loans/{loanId}/approve",
+        "path": "/loans/approve",
         "description": "Approve a loan (admin action)",
         "parameters": {
-          "path": ["loanId"]
+          "body": {
+            "required": ["loanId"]
+          }
         },
         "responseType": "object",
         "checker": false
       },
       "reject": {
         "method": "POST",
-        "path": "/loans/{loanId}/reject",
+        "path": "/loans/reject",
         "description": "Reject a loan application",
         "parameters": {
-          "path": ["loanId"],
           "body": {
+            "required": ["loanId"],
             "optional": ["reason"]
           }
         },
@@ -269,11 +363,13 @@
         "checker": false
       },
       "getPurchase": {
-        "method": "GET",
-        "path": "/airtime/purchases/{purchaseId}",
+        "method": "POST",
+        "path": "/airtime/purchases/get",
         "description": "Get airtime purchase details by ID",
         "parameters": {
-          "path": ["purchaseId"]
+          "body": {
+            "required": ["purchaseId"]
+          }
         },
         "responseType": "object",
         "checker": false
@@ -290,10 +386,10 @@
       },
       "checkCompleted": {
         "method": "GET",
-        "path": "/airtime/purchases/{purchaseId}/check-completed",
+        "path": "/airtime/purchases/check-completed",
         "description": "Checker: Verify if airtime purchase is completed",
         "parameters": {
-          "path": ["purchaseId"]
+          "query": ["purchaseId"]
         },
         "responseType": "checker",
         "checker": true,
@@ -302,22 +398,24 @@
     },
     "kyc": {
       "get": {
-        "method": "GET",
-        "path": "/kyc/customers/{customerId}",
+        "method": "POST",
+        "path": "/kyc/customers/get",
         "description": "Get KYC status for a customer",
         "parameters": {
-          "path": ["customerId"]
+          "body": {
+            "required": ["customerId"]
+          }
         },
         "responseType": "object",
         "checker": false
       },
       "refresh": {
         "method": "POST",
-        "path": "/kyc/customers/{customerId}/refresh",
+        "path": "/kyc/customers/refresh",
         "description": "Refresh KYC check",
         "parameters": {
-          "path": ["customerId"],
           "body": {
+            "required": ["customerId"],
             "optional": ["documents", "level"]
           }
         },
@@ -326,10 +424,10 @@
       },
       "checkApproved": {
         "method": "GET",
-        "path": "/kyc/customers/{customerId}/check-approved",
+        "path": "/kyc/customers/check-approved",
         "description": "Checker: Verify if KYC is approved",
         "parameters": {
-          "path": ["customerId"]
+          "query": ["customerId"]
         },
         "responseType": "checker",
         "checker": true,
@@ -338,22 +436,24 @@
     },
     "limits": {
       "get": {
-        "method": "GET",
-        "path": "/limits/{accountId}",
+        "method": "POST",
+        "path": "/limits/get",
         "description": "Get account transaction limits",
         "parameters": {
-          "path": ["accountId"]
+          "body": {
+            "required": ["accountId"]
+          }
         },
         "responseType": "object",
         "checker": false
       },
       "update": {
         "method": "POST",
-        "path": "/limits/{accountId}/update",
+        "path": "/limits/update",
         "description": "Update account transaction limits",
         "parameters": {
-          "path": ["accountId"],
           "body": {
+            "required": ["accountId"],
             "optional": ["dailyLimit", "monthlyLimit"]
           }
         },
@@ -362,14 +462,10 @@
       },
       "checkAvailable": {
         "method": "GET",
-        "path": "/limits/{accountId}/check-available",
+        "path": "/limits/check-available",
         "description": "Checker: Verify if limit is available for a transaction",
         "parameters": {
-          "path": ["accountId"],
-          "query": {
-            "required": ["amount"],
-            "optional": ["period"]
-          }
+          "query": ["accountId", "amount", "period"]
         },
         "responseType": "checker",
         "checker": true,
@@ -474,49 +570,49 @@
   "checkerEndpoints": [
     {
       "endpoint": "accounts.checkActive",
-      "path": "/accounts/{accountId}/check-active",
+      "path": "/accounts/check-active",
       "purpose": "Verify account is active",
       "useCase": "Pre-transaction validation"
     },
     {
       "endpoint": "transactions.checkCleared",
-      "path": "/transactions/{txnId}/check-cleared",
+      "path": "/transactions/check-cleared",
       "purpose": "Verify transaction cleared",
       "useCase": "Post-transaction confirmation"
     },
     {
       "endpoint": "payments.checkReady",
-      "path": "/payments/{paymentId}/check-ready",
+      "path": "/payments/check-ready",
       "purpose": "Verify payment ready to process",
       "useCase": "Pre-payment validation"
     },
     {
       "endpoint": "loans.checkEligible",
-      "path": "/loans/{loanId}/check-eligible",
+      "path": "/loans/check-eligible",
       "purpose": "Verify loan eligibility",
       "useCase": "Pre-approval validation"
     },
     {
       "endpoint": "loans.checkApproved",
-      "path": "/loans/{loanId}/check-approved",
+      "path": "/loans/check-approved",
       "purpose": "Verify loan approved",
       "useCase": "Pre-disbursement validation"
     },
     {
       "endpoint": "airtime.checkCompleted",
-      "path": "/airtime/purchases/{purchaseId}/check-completed",
+      "path": "/airtime/purchases/check-completed",
       "purpose": "Verify airtime delivered",
       "useCase": "Post-purchase confirmation"
     },
     {
       "endpoint": "kyc.checkApproved",
-      "path": "/kyc/customers/{customerId}/check-approved",
+      "path": "/kyc/customers/check-approved",
       "purpose": "Verify KYC approved",
       "useCase": "Pre-transaction validation"
     },
     {
       "endpoint": "limits.checkAvailable",
-      "path": "/limits/{accountId}/check-available?amount={amount}&period={period}",
+      "path": "/limits/check-available",
       "purpose": "Verify limit available",
       "useCase": "Pre-transaction validation"
     }

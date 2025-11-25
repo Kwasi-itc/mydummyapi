@@ -73,7 +73,7 @@ const options = {
             id: { type: 'string', example: 'loan-001' },
             customerId: { type: 'string', example: 'cust-001' },
             accountId: { type: 'string', example: 'acc-001' },
-            amount: { type: 'number', example: 5000.00 },
+            amount: { type: 'number', example: 50000.00 },
             currency: { type: 'string', example: 'GHS' },
             purpose: { type: 'string', example: 'Business expansion' },
             tenure: { type: 'integer', example: 12 },
@@ -85,7 +85,10 @@ const options = {
             approvedAt: { type: 'string', format: 'date-time', nullable: true },
             disbursedAt: { type: 'string', format: 'date-time', nullable: true },
             monthlyPayment: { type: 'number', nullable: true, example: 437.50 },
-            remainingBalance: { type: 'number', nullable: true, example: 5000.00 }
+            remainingBalance: { type: 'number', nullable: true, example: 5000.00 },
+            loanType: { type: 'string', enum: ['personal', 'business'], example: 'business' },
+            annualIncome: { type: 'number', example: 120000.00 },
+            employmentStatus: { type: 'string', enum: ['employed', 'self-employed', 'unemployed', 'retired'], example: 'employed' }
           }
         },
         AirtimePurchase: {
@@ -131,6 +134,63 @@ const options = {
             updatedAt: { type: 'string', format: 'date-time' }
           }
         },
+        ExchangeRate: {
+          type: 'object',
+          properties: {
+            from: { type: 'string', example: 'GHS' },
+            to: { type: 'string', example: 'USD' },
+            rate: { type: 'number', example: 0.084 },
+            amount: { type: 'number', example: 100 },
+            convertedAmount: { type: 'number', example: 8.4 },
+            source: { type: 'string', example: 'Bank of Ghana' },
+            retrievedAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        TBillCalculation: {
+          type: 'object',
+          properties: {
+            investmentAmount: { type: 'number', example: 10000 },
+            tenorDays: { type: 'integer', example: 91 },
+            discountRate: { type: 'number', example: 25.5 },
+            discountFactor: { type: 'number', example: 0.9363 },
+            faceValue: { type: 'number', example: 10681.5 },
+            interestEarned: { type: 'number', example: 681.5 },
+            annualizedYield: { type: 'number', example: 27.32 },
+            maturityDate: { type: 'string', format: 'date-time' },
+            issueDate: { type: 'string', format: 'date-time' },
+            summary: { type: 'string', example: 'Invest GHS 10000 to receive GHS 10681.5 at maturity.' }
+          }
+        },
+        LoanRepaymentInstallment: {
+          type: 'object',
+          properties: {
+            installment: { type: 'integer', example: 1 },
+            dueDate: { type: 'string', format: 'date-time' },
+            paymentAmount: { type: 'number', example: 2400.5 },
+            principalComponent: { type: 'number', example: 1800.5 },
+            interestComponent: { type: 'number', example: 600 },
+            remainingBalance: { type: 'number', example: 48200 }
+          }
+        },
+        LoanRepaymentCalculation: {
+          type: 'object',
+          properties: {
+            principal: { type: 'number', example: 50000 },
+            annualRate: { type: 'number', example: 28.5 },
+            termMonths: { type: 'integer', example: 24 },
+            baseMonthlyPayment: { type: 'number', example: 2706.14 },
+            scheduledMonthlyPayment: { type: 'number', example: 2906.14 },
+            totalPaid: { type: 'number', example: 69747.36 },
+            totalInterest: { type: 'number', example: 19747.36 },
+            projectedMonths: { type: 'integer', example: 22 },
+            payoffDate: { type: 'string', format: 'date-time' },
+            amortizationSchedule: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/LoanRepaymentInstallment' }
+            },
+            summary: { type: 'string', example: 'Pay ~GHS 2,906.14 per month to clear the loan in 22 months.' }
+          }
+        },
         CheckerResponse: {
           type: 'object',
           properties: {
@@ -170,7 +230,9 @@ const options = {
       { name: 'Loans', description: 'Loan application workflow endpoints' },
       { name: 'Airtime', description: 'Airtime purchase endpoints' },
       { name: 'KYC', description: 'Know Your Customer (KYC) compliance endpoints' },
-      { name: 'Limits', description: 'Account limits management endpoints' }
+      { name: 'Limits', description: 'Account limits management endpoints' },
+      { name: 'FX', description: 'Foreign exchange endpoints' },
+      { name: 'Treasury', description: 'Fixed income and treasury tools' }
     ]
   },
   apis: ['./src/routes/*.js', './src/server.js']

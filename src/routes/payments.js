@@ -128,17 +128,22 @@ router.post('/initiate', (req, res) => {
 
 /**
  * @swagger
- * /payments/{paymentId}:
- *   get:
+ * /payments/get:
+ *   post:
  *     summary: Get payment details by ID
  *     tags: [Payments]
- *     parameters:
- *       - in: path
- *         name: paymentId
- *         required: true
- *         schema:
- *           type: string
- *         description: Payment ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - paymentId
+ *             properties:
+ *               paymentId:
+ *                 type: string
+ *                 example: pay-001
  *     responses:
  *       200:
  *         description: Payment details
@@ -158,8 +163,19 @@ router.post('/initiate', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:paymentId', (req, res) => {
-  const payment = getPaymentById(req.params.paymentId);
+router.post('/get', (req, res) => {
+  const { paymentId } = req.body;
+  
+  if (!paymentId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: paymentId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const payment = getPaymentById(paymentId);
   
   if (!payment) {
     return res.status(404).json({
@@ -180,17 +196,22 @@ router.get('/:paymentId', (req, res) => {
 
 /**
  * @swagger
- * /payments/{paymentId}/cancel:
+ * /payments/cancel:
  *   post:
  *     summary: Cancel a pending payment
  *     tags: [Payments]
- *     parameters:
- *       - in: path
- *         name: paymentId
- *         required: true
- *         schema:
- *           type: string
- *         description: Payment ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - paymentId
+ *             properties:
+ *               paymentId:
+ *                 type: string
+ *                 example: pay-001
  *     responses:
  *       200:
  *         description: Payment cancelled
@@ -216,8 +237,19 @@ router.get('/:paymentId', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/:paymentId/cancel', (req, res) => {
-  const payment = getPaymentById(req.params.paymentId);
+router.post('/cancel', (req, res) => {
+  const { paymentId } = req.body;
+  
+  if (!paymentId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required field: paymentId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const payment = getPaymentById(paymentId);
 
   if (!payment) {
     return res.status(404).json({
@@ -237,7 +269,7 @@ router.post('/:paymentId/cancel', (req, res) => {
     });
   }
 
-  const updatedPayment = updatePayment(req.params.paymentId, { status: 'cancelled' });
+  const updatedPayment = updatePayment(paymentId, { status: 'cancelled' });
 
   res.json({
     status: 'success',
@@ -250,18 +282,18 @@ router.post('/:paymentId/cancel', (req, res) => {
 
 /**
  * @swagger
- * /payments/{paymentId}/check-ready:
+ * /payments/check-ready:
  *   get:
  *     summary: Checker endpoint - Verify if payment is ready to process
  *     description: Returns true/false indicating if the payment is ready to process (KYC complete, sufficient balance, pending status). Used for workflow conditional logic.
  *     tags: [Payments]
  *     parameters:
- *       - in: path
+ *       - in: query
  *         name: paymentId
  *         required: true
  *         schema:
  *           type: string
- *         description: Payment ID
+ *           example: pay-001
  *     responses:
  *       200:
  *         description: Checker response
@@ -270,14 +302,25 @@ router.post('/:paymentId/cancel', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/CheckerResponse'
  */
-router.get('/:paymentId/check-ready', (req, res) => {
-  const payment = getPaymentById(req.params.paymentId);
+router.get('/check-ready', (req, res) => {
+  const { paymentId } = req.query;
+  
+  if (!paymentId) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameter: paymentId',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+  
+  const payment = getPaymentById(paymentId);
 
   if (!payment) {
     return res.json({
       result: false,
       reason: 'Payment not found',
-      metadata: { paymentId: req.params.paymentId },
+      metadata: { paymentId },
       timestamp: new Date().toISOString(),
       requestId: req.requestId
     });
