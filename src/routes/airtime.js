@@ -330,8 +330,8 @@ router.get('/purchases/check-completed', (req, res) => {
   const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: finalResult,
-    reason: finalResult
+    value: finalResult,
+    message: finalResult
       ? 'Airtime purchase has been completed'
       : 'Airtime purchase is still processing',
     timestamp: new Date().toISOString(),

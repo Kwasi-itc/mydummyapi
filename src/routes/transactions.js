@@ -294,8 +294,8 @@ router.get('/check-cleared', (req, res) => {
   const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: finalResult,
-    reason: finalResult
+    value: finalResult,
+    message: finalResult
       ? 'Transaction has been cleared'
       : 'Transaction has NOT been cleared',
     timestamp: new Date().toISOString(),

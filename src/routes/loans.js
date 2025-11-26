@@ -346,8 +346,8 @@ router.get('/check-eligible', (req, res) => {
   const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: finalResult,
-    reason: finalResult 
+    value: finalResult,
+    message: finalResult 
       ? 'Loan is eligible' 
       : 'Loan is not eligible',
     timestamp: new Date().toISOString(),
@@ -385,8 +385,8 @@ router.get('/check-approved', (req, res) => {
   const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: finalResult,
-    reason: finalResult 
+    value: finalResult,
+    message: finalResult 
       ? 'Loan has been approved' 
       : 'Loan has not been approved',
     timestamp: new Date().toISOString(),

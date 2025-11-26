@@ -264,10 +264,10 @@ router.get('/customers/check-approved', (req, res) => {
   const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: finalResult,
-    reason: finalResult
+    value: finalResult,
+    message: finalResult
       ? 'KYC is approved'
-      : 'KYC is not approved',
+      : 'KYC is pending approval, please check again after 24 to 48 hours',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

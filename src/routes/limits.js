@@ -213,8 +213,8 @@ router.get('/check-available', (req, res) => {
   const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: finalResult,
-    reason: finalResult
+    value: finalResult,
+    message: finalResult
       ? 'Limit is available'
       : 'Insufficient limit',
     timestamp: new Date().toISOString(),

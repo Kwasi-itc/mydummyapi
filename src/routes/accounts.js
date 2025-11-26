@@ -379,8 +379,8 @@ router.get('/check-active', (req, res) => {
   const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: finalResult,
-    reason: finalResult ? 'Account is active' : 'Account is inactive',
+    value: finalResult,
+    message: finalResult ? 'Account is active' : 'Account is inactive',
     timestamp: new Date().toISOString(),
     requestId: req.requestId
   });

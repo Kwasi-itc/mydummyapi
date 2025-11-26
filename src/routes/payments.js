@@ -357,8 +357,8 @@ router.get('/check-ready', (req, res) => {
   const finalResult = forced !== null ? forced : false;
 
   res.json({
-    result: finalResult,
-    reason: finalResult
+    value: finalResult,
+    message: finalResult
       ? 'Payment is ready to process'
       : 'Payment is NOT ready to process',
     timestamp: new Date().toISOString(),

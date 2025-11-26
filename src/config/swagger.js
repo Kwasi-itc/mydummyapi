@@ -198,9 +198,8 @@ const options = {
         CheckerResponse: {
           type: 'object',
           properties: {
-            result: { type: 'boolean', example: true },
-            reason: { type: 'string', example: 'Account is active' },
-            metadata: { type: 'object' },
+            value: { type: 'boolean', example: true },
+            message: { type: 'string', example: 'Account is active' },
             timestamp: { type: 'string', format: 'date-time' },
             requestId: { type: 'string', example: 'req-1234567890-abc123' }
           }
