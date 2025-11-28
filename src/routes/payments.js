@@ -366,4 +366,197 @@ router.get('/check-ready', (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /payments/bills:
+ *   post:
+ *     summary: Pay utility bills (electricity, water, internet)
+ *     description: Process bill payments for utilities like electricity, water, and internet services
+ *     tags: [Payments]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accountId
+ *               - customerId
+ *               - biller
+ *               - accountNumber
+ *               - amount
+ *             properties:
+ *               accountId:
+ *                 type: string
+ *                 description: The unique identifier of the source account
+ *                 example: acc-001
+ *               customerId:
+ *                 type: string
+ *                 description: The unique identifier of the customer
+ *                 example: cust-001
+ *               biller:
+ *                 type: string
+ *                 enum: [ECG, NEDCo, GWCL, MTN, Vodafone, AirtelTigo]
+ *                 description: Ghana utility biller (ECG/NEDCo for electricity, GWCL for water, MTN/Vodafone/AirtelTigo for internet)
+ *                 example: ECG
+ *               accountNumber:
+ *                 type: string
+ *                 description: Customer's account number with the biller
+ *                 example: ECG-123456789
+ *               amount:
+ *                 type: number
+ *                 minimum: 0.01
+ *                 description: Payment amount (must be greater than 0.01)
+ *                 example: 150.00
+ *               currency:
+ *                 type: string
+ *                 enum: [GHS, USD, EUR, NGN]
+ *                 default: GHS
+ *                 description: Currency code for the payment
+ *                 example: GHS
+ *     responses:
+ *       201:
+ *         description: Bill payment processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         paymentId:
+ *                           type: string
+ *                         biller:
+ *                           type: string
+ *                         accountNumber:
+ *                           type: string
+ *                         amount:
+ *                           type: number
+ *                         status:
+ *                           type: string
+ *       400:
+ *         description: Missing required fields or invalid values
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Account not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.post('/bills', (req, res) => {
+  const { accountId, customerId, biller, accountNumber, amount, currency = 'GHS' } = req.body;
+
+  // Validate required fields
+  const requiredFields = {
+    accountId,
+    customerId,
+    biller,
+    accountNumber,
+    amount
+  };
+
+  const missingFields = Object.entries(requiredFields)
+    .filter(([_, value]) => value === undefined || value === null || value === '')
+    .map(([key]) => key);
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      status: 'error',
+      message: `Missing required fields: ${missingFields.join(', ')}`,
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Validate amount
+  if (typeof amount !== 'number' || amount < 0.01) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Amount must be a number greater than or equal to 0.01',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Validate biller enum (Ghana-specific utility companies)
+  const validBillers = ['ECG', 'NEDCo', 'GWCL', 'MTN', 'Vodafone', 'AirtelTigo'];
+  if (!validBillers.includes(biller)) {
+    return res.status(400).json({
+      status: 'error',
+      message: `Invalid biller. Must be one of: ${validBillers.join(', ')}`,
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Validate currency enum
+  const validCurrencies = ['GHS', 'USD', 'EUR', 'NGN'];
+  if (!validCurrencies.includes(currency)) {
+    return res.status(400).json({
+      status: 'error',
+      message: `Invalid currency. Must be one of: ${validCurrencies.join(', ')}`,
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Verify account exists
+  const account = getAccountById(accountId);
+  if (!account) {
+    return res.status(404).json({
+      status: 'error',
+      message: 'Account not found',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Check sufficient balance
+  if (account.balance < amount) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Insufficient account balance',
+      timestamp: new Date().toISOString(),
+      requestId: req.requestId
+    });
+  }
+
+  // Create bill payment
+  const payment = addPayment({
+    accountId,
+    customerId,
+    beneficiary: biller,
+    beneficiaryAccount: accountNumber,
+    amount,
+    currency,
+    method: 'bill_payment',
+    status: 'completed',
+    kycComplete: true,
+    sufficientBalance: account.balance >= amount
+  });
+
+  res.status(201).json({
+    status: 'success',
+    data: {
+      paymentId: payment.id,
+      biller,
+      accountNumber,
+      amount: payment.amount,
+      currency: payment.currency,
+      status: 'success',
+      reference: payment.reference
+    },
+    message: 'Bill payment processed successfully',
+    timestamp: new Date().toISOString(),
+    requestId: req.requestId
+  });
+});
+
 export default router;
