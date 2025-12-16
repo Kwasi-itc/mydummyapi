@@ -11,6 +11,13 @@ import kycRoutes from './routes/kyc.js';
 import limitsRoutes from './routes/limits.js';
 import fxRoutes from './routes/fx.js';
 import treasuryRoutes from './routes/treasury.js';
+import groupsRoutes from './routes/groups.js';
+import campaignsRoutes from './routes/campaigns.js';
+import authRoutes from './routes/auth.js';
+import walletsRoutes from './routes/wallets.js';
+import contributionsRoutes from './routes/contributions.js';
+import changoKycRoutes from './routes/chango-kyc.js';
+import cashoutsRoutes from './routes/cashouts.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -74,6 +81,13 @@ app.use('/kyc', kycRoutes);
 app.use('/limits', limitsRoutes);
 app.use('/fx', fxRoutes);
 app.use('/treasury', treasuryRoutes);
+app.use('/chango/groups', groupsRoutes);
+app.use('/chango/campaigns', campaignsRoutes);
+app.use('/chango/auth', authRoutes);
+app.use('/chango/wallets', walletsRoutes);
+app.use('/chango/contributions', contributionsRoutes);
+app.use('/chango/kyc', changoKycRoutes);
+app.use('/chango/cashout', cashoutsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

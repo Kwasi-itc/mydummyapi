@@ -22,6 +22,14 @@ const options = {
       }
     ],
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Bearer token authentication (dummy implementation)'
+        }
+      },
       schemas: {
         Account: {
           type: 'object',
@@ -165,6 +173,96 @@ const options = {
             summary: { type: 'string', example: 'Invest GHS 10000 to receive GHS 10681.5 at maturity.' }
           }
         },
+        Group: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'grp-001' },
+            groupName: { type: 'string', example: 'Savings Circle 2024' },
+            country: { type: 'string', enum: ['Ghana', 'Kenya', 'Liberia', 'Rwanda'], example: 'Ghana' },
+            description: { type: 'string', example: 'A savings group for monthly contributions' },
+            cashoutPolicy: { type: 'string', enum: ['admin-only', '25%', '50%', '75%', '100%'], example: '50%' },
+            termsAndConditions: { type: 'string', example: 'Members must contribute monthly. No withdrawals without group approval.' },
+            status: { type: 'string', enum: ['active', 'suspended', 'closed'], example: 'active' },
+            memberCount: { type: 'number', example: 5 },
+            members: { type: 'array', items: { type: 'string' }, example: ['+233241234567', '+233241234568'] },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        Campaign: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'camp-001' },
+            groupName: { type: 'string', example: 'Savings Circle 2024' },
+            campaignName: { type: 'string', example: 'Emergency Fund Drive' },
+            campaignDetails: { type: 'string', example: 'Raising funds for emergency situations within our group' },
+            campaignType: { type: 'string', enum: ['Perpetual Campaign', 'Temporary Campaign'], example: 'Temporary Campaign' },
+            endDate: { type: 'string', format: 'date', nullable: true, example: '2024-12-31' },
+            targetAmount: { type: 'number', nullable: true, example: 5000.00 },
+            currentAmount: { type: 'number', example: 0 },
+            contributorCount: { type: 'number', example: 0 },
+            status: { type: 'string', enum: ['active', 'completed', 'cancelled'], example: 'active' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        Wallet: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'wal-001' },
+            country: { type: 'string', enum: ['Ghana', 'Kenya', 'Liberia', 'Rwanda', 'Global'], example: 'Ghana' },
+            walletType: { type: 'string', enum: ['mobile_wallet', 'bank_account', 'card'], example: 'mobile_wallet' },
+            bankName: { type: 'string', nullable: true, example: 'GCB Bank' },
+            accountHolderName: { type: 'string', nullable: true, example: 'John Doe' },
+            accountNumber: { type: 'string', nullable: true, example: '1234567890' },
+            cardHolderName: { type: 'string', nullable: true, example: 'John Doe' },
+            cardNumber: { type: 'string', nullable: true, example: '****1111' },
+            cardExpiry: { type: 'string', nullable: true, example: '12/25' },
+            cardAlias: { type: 'string', nullable: true, example: 'My Primary Card' },
+            mobileNetwork: { type: 'string', enum: ['MTN', 'AT', 'Telecel'], nullable: true, example: 'MTN' },
+            mobileNumber: { type: 'string', nullable: true, example: '+233241234567' },
+            status: { type: 'string', enum: ['active', 'suspended', 'deleted'], example: 'active' },
+            createdAt: { type: 'string', format: 'date-time' },
+            updatedAt: { type: 'string', format: 'date-time' }
+          }
+        },
+        Contribution: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'cont-001' },
+            groupName: { type: 'string', example: 'Savings Circle 2024' },
+            contributionType: { type: 'string', enum: ['group', 'campaign'], example: 'campaign' },
+            campaignName: { type: 'string', nullable: true, example: 'Emergency Fund Drive' },
+            walletId: { type: 'string', example: 'wal-001' },
+            amount: { type: 'number', example: 100.00 },
+            totalAmount: { type: 'number', example: 101.00 },
+            onBehalfFee: { type: 'number', example: 1.00 },
+            reference: { type: 'string', nullable: true, example: 'Monthly contribution' },
+            anonymous: { type: 'boolean', example: false },
+            recurring: { type: 'boolean', example: false },
+            contributeOnBehalf: { type: 'boolean', example: false },
+            onBehalfPhoneNumber: { type: 'string', nullable: true, example: '+233241234568' },
+            status: { type: 'string', enum: ['pending_approval', 'completed', 'rejected'], example: 'completed' },
+            createdAt: { type: 'string', format: 'date-time' },
+            processedAt: { type: 'string', format: 'date-time', nullable: true }
+          }
+        },
+        Cashout: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'cash-001' },
+            campaignName: { type: 'string', example: 'Emergency Fund Drive' },
+            amount: { type: 'number', example: 500.00 },
+            reason: { type: 'string', example: 'Emergency medical expenses' },
+            cashoutType: { type: 'string', enum: ['yourself', 'member', 'other'], example: 'yourself' },
+            memberPhoneNumber: { type: 'string', nullable: true, example: '+233241234567' },
+            otherPhoneNumber: { type: 'string', nullable: true, example: '+233241234568' },
+            cashoutWalletId: { type: 'string', example: 'wal-001' },
+            status: { type: 'string', enum: ['pending', 'completed', 'rejected'], example: 'pending' },
+            createdAt: { type: 'string', format: 'date-time' },
+            processedAt: { type: 'string', format: 'date-time', nullable: true }
+          }
+        },
         LoanRepaymentInstallment: {
           type: 'object',
           properties: {
@@ -235,7 +333,9 @@ const options = {
       { name: 'KYC', description: 'Know Your Customer (KYC) compliance endpoints' },
       { name: 'Limits', description: 'Account limits management endpoints' },
       { name: 'FX', description: 'Foreign exchange endpoints' },
-      { name: 'Treasury', description: 'Fixed income and treasury tools' }
+      { name: 'Treasury', description: 'Fixed income and treasury tools' },
+      { name: 'Chango', description: 'Chango group management endpoints' },
+      { name: 'Authentication', description: 'User authentication and account management endpoints' }
     ]
   },
   apis: ['./src/routes/*.js', './src/server.js']

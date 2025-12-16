@@ -490,3 +490,203 @@ export const getExchangeRate = (fromCurrency, toCurrency) => {
   };
 };
 
+let groups = [];
+
+export const getGroups = () => groups;
+export const getGroupById = (id) => groups.find(group => group.id === id);
+export const addGroup = (group) => {
+  const newGroup = {
+    ...group,
+    id: `grp-${String(groups.length + 1).padStart(3, '0')}`,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    members: group.invitePhoneNumbers || [],
+    memberCount: (group.invitePhoneNumbers?.length || 0) + 1 // +1 for creator
+  };
+  groups.push(newGroup);
+  return newGroup;
+};
+export const updateGroup = (id, updates) => {
+  const index = groups.findIndex(group => group.id === id);
+  if (index === -1) return null;
+  groups[index] = { ...groups[index], ...updates, updatedAt: new Date().toISOString() };
+  return groups[index];
+};
+
+let campaigns = [];
+
+export const getCampaigns = () => campaigns;
+export const getCampaignById = (id) => campaigns.find(campaign => campaign.id === id);
+export const addCampaign = (campaign) => {
+  const newCampaign = {
+    ...campaign,
+    id: `camp-${String(campaigns.length + 1).padStart(3, '0')}`,
+    status: 'active',
+    currentAmount: 0,
+    contributorCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  campaigns.push(newCampaign);
+  return newCampaign;
+};
+export const updateCampaign = (id, updates) => {
+  const index = campaigns.findIndex(campaign => campaign.id === id);
+  if (index === -1) return null;
+  campaigns[index] = { ...campaigns[index], ...updates, updatedAt: new Date().toISOString() };
+  return campaigns[index];
+};
+
+let users = [];
+let otpVerifications = [];
+
+// Generate a 6-digit OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+export const getUserByEmail = (email) => users.find(user => user.email === email);
+export const getUserByPhone = (phoneNumber) => users.find(user => user.phoneNumber === phoneNumber);
+export const getUserById = (id) => users.find(user => user.id === id);
+export const addUser = (user) => {
+  const newUser = {
+    ...user,
+    id: `user-${String(users.length + 1).padStart(3, '0')}`,
+    status: 'pending_verification',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    verifiedAt: null
+  };
+  users.push(newUser);
+  return newUser;
+};
+export const updateUser = (id, updates) => {
+  const index = users.findIndex(user => user.id === id);
+  if (index === -1) return null;
+  users[index] = { ...users[index], ...updates, updatedAt: new Date().toISOString() };
+  return users[index];
+};
+
+export const createOTPVerification = (phoneNumber, email) => {
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP expires in 10 minutes
+  
+  const verification = {
+    phoneNumber,
+    email,
+    otp,
+    expiresAt: expiresAt.toISOString(),
+    verified: false,
+    createdAt: new Date().toISOString()
+  };
+  
+  otpVerifications.push(verification);
+  return verification;
+};
+
+export const getOTPVerification = (phoneNumber, email) => {
+  return otpVerifications.find(
+    v => v.phoneNumber === phoneNumber && 
+         v.email === email && 
+         !v.verified &&
+         new Date(v.expiresAt) > new Date()
+  );
+};
+
+export const verifyOTP = (phoneNumber, email, otp) => {
+  const verification = getOTPVerification(phoneNumber, email);
+  
+  if (!verification) {
+    return { valid: false, message: 'OTP not found or expired' };
+  }
+  
+  if (verification.otp !== otp) {
+    return { valid: false, message: 'Invalid OTP' };
+  }
+  
+  // Mark as verified
+  verification.verified = true;
+  verification.verifiedAt = new Date().toISOString();
+  
+  return { valid: true, verification };
+};
+
+let wallets = [];
+
+export const getWallets = () => wallets;
+export const getWalletById = (id) => wallets.find(wallet => wallet.id === id);
+export const getWalletsByUserId = (userId) => wallets.filter(wallet => wallet.userId === userId);
+export const addWallet = (wallet) => {
+  const newWallet = {
+    ...wallet,
+    id: `wal-${String(wallets.length + 1).padStart(3, '0')}`,
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  wallets.push(newWallet);
+  return newWallet;
+};
+export const updateWallet = (id, updates) => {
+  const index = wallets.findIndex(wallet => wallet.id === id);
+  if (index === -1) return null;
+  wallets[index] = { ...wallets[index], ...updates, updatedAt: new Date().toISOString() };
+  return wallets[index];
+};
+
+let contributions = [];
+
+export const getContributions = () => contributions;
+export const getContributionById = (id) => contributions.find(contribution => contribution.id === id);
+export const getContributionsByGroup = (groupName) => contributions.filter(c => c.groupName === groupName);
+export const getContributionsByCampaign = (groupName, campaignName) => contributions.filter(c => c.groupName === groupName && c.campaignName === campaignName);
+export const addContribution = (contribution) => {
+  const newContribution = {
+    ...contribution,
+    id: `cont-${String(contributions.length + 1).padStart(3, '0')}`,
+    status: contribution.contributeOnBehalf ? 'pending_approval' : 'completed',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    processedAt: contribution.contributeOnBehalf ? null : new Date().toISOString()
+  };
+  contributions.push(newContribution);
+  return newContribution;
+};
+export const updateContribution = (id, updates) => {
+  const index = contributions.findIndex(contribution => contribution.id === id);
+  if (index === -1) return null;
+  contributions[index] = { ...contributions[index], ...updates, updatedAt: new Date().toISOString() };
+  if (updates.status === 'completed' && !contributions[index].processedAt) {
+    contributions[index].processedAt = new Date().toISOString();
+  }
+  return contributions[index];
+};
+
+let cashouts = [];
+
+export const getCashouts = () => cashouts;
+export const getCashoutById = (id) => cashouts.find(cashout => cashout.id === id);
+export const getCashoutsByCampaign = (campaignName) => cashouts.filter(c => c.campaignName === campaignName);
+export const addCashout = (cashout) => {
+  const newCashout = {
+    ...cashout,
+    id: `cash-${String(cashouts.length + 1).padStart(3, '0')}`,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    processedAt: null
+  };
+  cashouts.push(newCashout);
+  return newCashout;
+};
+export const updateCashout = (id, updates) => {
+  const index = cashouts.findIndex(cashout => cashout.id === id);
+  if (index === -1) return null;
+  cashouts[index] = { ...cashouts[index], ...updates, updatedAt: new Date().toISOString() };
+  if (updates.status === 'completed' && !cashouts[index].processedAt) {
+    cashouts[index].processedAt = new Date().toISOString();
+  }
+  return cashouts[index];
+};
+
